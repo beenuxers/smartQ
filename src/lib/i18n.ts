@@ -1,0 +1,224 @@
+import type { LocaleCode } from "./product";
+
+export type Messages = {
+  brand: string;
+  tagline: string;
+  heroSupport: string;
+  ctaStart: string;
+  ctaSignIn: string;
+  joinTitle: string;
+  guestName: string;
+  partySize: string;
+  phone: string;
+  notes: string;
+  joinQueue: string;
+  yourNumber: string;
+  position: string;
+  waiting: string;
+  notified: string;
+  tableReady: string;
+  seated: string;
+  noShow: string;
+  hostDashboard: string;
+  notify: string;
+  markSeated: string;
+  markNoShow: string;
+  analytics: string;
+  seatings: string;
+  avgWait: string;
+  noShows: string;
+  joins: string;
+  pricing: string;
+  outlets: string;
+  settings: string;
+  signOut: string;
+  qrCode: string;
+  downloadQr: string;
+  sessionHours: string;
+  lunch: string;
+  dinner: string;
+  allDay: string;
+  emptyQueue: string;
+  upgrade: string;
+  plan: string;
+  whatsappLeft: string;
+  seatingsLeft: string;
+  waitlist: string;
+  billing: string;
+  save: string;
+  saved: string;
+  marketLanguage: string;
+  billingCurrency: string;
+  uiLanguage: string;
+};
+
+const en: Messages = {
+  brand: "SmartQ",
+  tagline: "Tables ready on WhatsApp",
+  heroSupport:
+    "QR waitlist for cafes and restaurants in Singapore, Indonesia, and Malaysia. Guests never need an app.",
+  ctaStart: "Start free",
+  ctaSignIn: "Sign in",
+  joinTitle: "Join the waitlist",
+  guestName: "Name",
+  partySize: "Party size",
+  phone: "WhatsApp number",
+  notes: "Notes (optional)",
+  joinQueue: "Join queue",
+  yourNumber: "Your number",
+  position: "Parties ahead",
+  waiting: "Waiting",
+  notified: "Notified",
+  tableReady: "Your table is ready!",
+  seated: "Seated",
+  noShow: "No-show",
+  hostDashboard: "Host dashboard",
+  notify: "Notify",
+  markSeated: "Seated",
+  markNoShow: "No-show",
+  analytics: "Today",
+  seatings: "Seatings",
+  avgWait: "Avg wait",
+  noShows: "No-shows",
+  joins: "Joins",
+  pricing: "Pricing",
+  outlets: "Outlets",
+  settings: "Settings",
+  signOut: "Sign out",
+  qrCode: "Guest QR",
+  downloadQr: "Download QR",
+  sessionHours: "Session",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  allDay: "All day",
+  emptyQueue: "No parties waiting",
+  upgrade: "Upgrade plan",
+  plan: "Plan",
+  whatsappLeft: "WhatsApp left",
+  seatingsLeft: "Seatings left",
+  waitlist: "Waitlist",
+  billing: "Billing",
+  save: "Save",
+  saved: "Saved",
+  marketLanguage: "Market & language",
+  billingCurrency: "Billing currency",
+  uiLanguage: "UI language",
+};
+
+const ms: Messages = {
+  ...en,
+  tagline: "Meja sedia melalui WhatsApp",
+  heroSupport:
+    "Senarai tunggu QR untuk kafe dan restoran di Singapura, Indonesia dan Malaysia. Pelanggan tak perlu pasang app.",
+  ctaStart: "Cuba percuma",
+  ctaSignIn: "Log masuk",
+  joinTitle: "Sertai senarai tunggu",
+  guestName: "Nama",
+  partySize: "Bilangan orang",
+  phone: "Nombor WhatsApp",
+  notes: "Nota (pilihan)",
+  joinQueue: "Sertai giliran",
+  yourNumber: "Nombor anda",
+  position: "Giliran di hadapan",
+  waiting: "Menunggu",
+  notified: "Dimaklumkan",
+  tableReady: "Meja anda sudah sedia!",
+  seated: "Duduk",
+  noShow: "Tidak datang",
+  hostDashboard: "Papan host",
+  notify: "Maklumkan",
+  markSeated: "Duduk",
+  markNoShow: "Tidak datang",
+  analytics: "Hari ini",
+  seatings: "Duduk",
+  avgWait: "Purata tunggu",
+  noShows: "Tidak datang",
+  joins: "Sertai",
+  pricing: "Harga",
+  outlets: "Cawangan",
+  settings: "Tetapan",
+  signOut: "Log keluar",
+  qrCode: "QR tetamu",
+  downloadQr: "Muat turun QR",
+  sessionHours: "Sesi",
+  lunch: "Makan tengah hari",
+  dinner: "Makan malam",
+  allDay: "Sepanjang hari",
+  emptyQueue: "Tiada tetamu menunggu",
+  upgrade: "Naik taraf",
+  plan: "Pelan",
+  whatsappLeft: "WhatsApp tinggal",
+  seatingsLeft: "Tempat duduk tinggal",
+  waitlist: "Senarai tunggu",
+  billing: "Bil",
+  save: "Simpan",
+  saved: "Disimpan",
+  marketLanguage: "Pasaran & bahasa",
+  billingCurrency: "Mata wang bil",
+  uiLanguage: "Bahasa UI",
+};
+
+const id: Messages = {
+  ...en,
+  tagline: "Meja siap lewat WhatsApp",
+  heroSupport:
+    "Antrian QR untuk kafe dan restoran di Singapura, Indonesia, dan Malaysia. Tamu tidak perlu unduh aplikasi.",
+  ctaStart: "Mulai gratis",
+  ctaSignIn: "Masuk",
+  joinTitle: "Gabung antrean",
+  guestName: "Nama",
+  partySize: "Jumlah orang",
+  phone: "Nomor WhatsApp",
+  notes: "Catatan (opsional)",
+  joinQueue: "Masuk antrean",
+  yourNumber: "Nomor Anda",
+  position: "Antrean di depan",
+  waiting: "Menunggu",
+  notified: "Diberitahu",
+  tableReady: "Meja Anda sudah siap!",
+  seated: "Duduk",
+  noShow: "Tidak datang",
+  hostDashboard: "Dasbor host",
+  notify: "Beritahu",
+  markSeated: "Duduk",
+  markNoShow: "Tidak datang",
+  analytics: "Hari ini",
+  seatings: "Duduk",
+  avgWait: "Rata-rata tunggu",
+  noShows: "Tidak datang",
+  joins: "Gabung",
+  pricing: "Harga",
+  outlets: "Outlet",
+  settings: "Pengaturan",
+  signOut: "Keluar",
+  qrCode: "QR tamu",
+  downloadQr: "Unduh QR",
+  sessionHours: "Sesi",
+  lunch: "Siang",
+  dinner: "Malam",
+  allDay: "Seharian",
+  emptyQueue: "Tidak ada tamu menunggu",
+  upgrade: "Upgrade paket",
+  plan: "Paket",
+  whatsappLeft: "WhatsApp tersisa",
+  seatingsLeft: "Kuota seating tersisa",
+  waitlist: "Antrean",
+  billing: "Tagihan",
+  save: "Simpan",
+  saved: "Tersimpan",
+  marketLanguage: "Pasar & bahasa",
+  billingCurrency: "Mata uang tagihan",
+  uiLanguage: "Bahasa UI",
+};
+
+const dictionaries: Record<LocaleCode, Messages> = { en, ms, id };
+
+export function getMessages(locale: string): Messages {
+  if (locale === "ms" || locale === "id") return dictionaries[locale];
+  return dictionaries.en;
+}
+
+export function resolveLocale(locale?: string | null): LocaleCode {
+  if (locale === "ms" || locale === "id" || locale === "en") return locale;
+  return "en";
+}

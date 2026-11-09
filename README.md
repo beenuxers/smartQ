@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SmartQ — SEA F&B Virtual Waitlist
 
-## Getting Started
+WhatsApp + QR waitlist for cafes and restaurants in **Singapore, Indonesia, and Malaysia**.
 
-First, run the development server:
+Guests scan a QR, join on mobile web, and get called back on WhatsApp when their table is ready. Hosts run the queue from a browser with three actions: **Notify**, **Seated**, **No-show**.
+
+## Stack
+
+- Next.js (App Router) + TypeScript
+- Prisma + SQLite (swap `DATABASE_URL` to Postgres for production)
+- NextAuth (credentials)
+- WhatsApp Cloud API provider (console fallback in dev)
+- Local subscription upgrades (hook for Stripe / Xendit / iPay88)
+
+## Quick start
 
 ```bash
+npm install
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000), register an outlet, download the QR, and join as a guest.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Plans (per outlet)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+List prices are **USD-first**. Visitors can switch to MYR / SGD / IDR, or auto-detect from territory (timezone / country).
 
-## Learn More
+| Plan    | USD/mo | SGD/mo | IDR/mo | MYR/mo | Seatings | WhatsApp |
+|---------|--------|--------|--------|--------|----------|----------|
+| Free    | 0      | 0      | 0      | 0      | 100      | 50       |
+| Starter | 19     | 29     | 149k   | 79     | 1,500    | 3,000    |
+| Growth  | 39     | 49     | 299k   | 149    | 8,000    | 15,000   |
 
-To learn more about Next.js, take a look at the following resources:
+Annual billing ≈ 20% off. WhatsApp overage is a transparent top-up after allowance.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Rollout preference
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Singapore (EN, SGD)
+2. Indonesia (ID, IDR, PDPL)
+3. Malaysia (EN + MS, MYR, PDPA)
 
-## Deploy on Vercel
+## Platform admin
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Founders use `/admin` (not the customer `/dashboard`) to see **all** organizations and payments.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Set `ADMIN_EMAILS` in `.env` to your login email(s), comma-separated  
+   Example: `ADMIN_EMAILS=you@example.com,cofounder@example.com`
+2. Register or log in with that email
+3. Open [http://localhost:3000/admin](http://localhost:3000/admin) (or click **Admin** in the host nav)
+
+From admin you can:
+
+- Overview KPIs (orgs by plan, paid/failed payments, revenue this month)
+- Search all organizations and open any customer
+- Change a customer’s plan, activate/deactivate outlets
+- View global payment history (success vs failed) without logging into each account
+
+Non-allowlisted users who hit `/admin` are redirected to `/dashboard`.
+
+## Env
+
+Copy `.env.example` to `.env`. Set `WHATSAPP_*` to send real messages; otherwise joins/notify log to the server console. Set `ADMIN_EMAILS` for platform access.

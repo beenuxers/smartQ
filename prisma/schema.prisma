@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  memberships  Membership[]
+}
+
+model Organization {
+  id           String   @id @default(cuid())
+  name         String
+  country      String   @default("SG") // SG | ID | MY (preference order)
+  locale       String   @default("en") // en | ms | id
+  currency     String   @default("USD") // USD | MYR | SGD | IDR
+  plan         String   @default("free") // free | starter | growth
+  billingCycle String   @default("monthly") // monthly | annual
+  whatsappUsed Int      @default(0)
+  seatingsUsed Int      @default(0)
+  usageMonth   String   @default("") // YYYY-MM
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  outlets      Outlet[]
+  memberships  Membership[]
+  payments     Payment[]
+}
+
+model Payment {
+  id             String       @id @default(cuid())
+  plan           String
+  billingCycle   String
+  amount         Int
+  currency       String
+  status         String       @default("pending") // pending | paid | failed | cancelled
+  provider       String       @default("test")
+  cardLast4      String?
+  failureReason  String?
+  organizationId String
+  createdAt      DateTime     @default(now())
+  paidAt         DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  role           String       @default("owner") // owner | staff
+  userId         String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+model Outlet {
+  id             String       @id @default(cuid())
+  name           String
+  slug           String       @unique
+  timezone       String       @default("Asia/Kuala_Lumpur")
+  lunchStart     String       @default("11:00")
+  lunchEnd       String       @default("15:00")
+  dinnerStart    String       @default("17:00")
+  dinnerEnd      String       @default("22:00")
+  activeSession  String       @default("all") // lunch | dinner | all
+  isActive       Boolean      @default(true)
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parties        Party[]
+}
+
+model Party {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  queueNumber  Int
+  guestName    String
+  partySize    Int
+  phone        String
+  notes        String?
+  status       String    @default("waiting") // waiting | notified | seated | no_show | cancelled
+  positionLink String
+  joinedAt     DateTime  @default(now())
+  notifiedAt   DateTime?
+  seatedAt     DateTime?
+  completedAt  DateTime?
+  outletId     String
+  outlet       Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([outletId, status])
+  @@index([outletId, joinedAt])
+}

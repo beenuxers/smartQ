@@ -1,26 +1,317 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f7f5;
+  --foreground: #121816;
+  --card: #ffffff;
+  --muted: #5c6b63;
+  --accent: #0f6b5c;
+  --accent-dark: #0a5246;
+  --accent-soft: rgba(15, 107, 92, 0.1);
+  --line: #e2e5e1;
+  --success: #0f6b5c;
+  --danger: #b42318;
+  --hero-top: #0b3d36;
+  --hero-bottom: #0f6b5c;
+  --hero-mid: #16352f;
+  --radius: 12px;
+  --radius-sm: 10px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-dark: var(--accent-dark);
+  --color-line: var(--line);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(15, 107, 92, 0.06), transparent 50%),
+    var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui), "IBM Plex Sans", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.display {
+  font-family: var(--font-display), Sora, system-ui, sans-serif;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1.15rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.btn-secondary {
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: #c8cec9;
+  background: #fafbfa;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--danger);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.field > span {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
+  color: var(--foreground);
+  outline: none;
+  font: inherit;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.border-line {
+  border-color: var(--line);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 480ms ease both;
+}
+
+.rise-in-delay {
+  animation: rise-in 560ms ease 100ms both;
+}
+
+.rise-in-delay-2 {
+  animation: rise-in 620ms ease 180ms both;
+}
+
+.trust-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.trust-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trust-strip span::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.step-rail {
+  display: grid;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .step-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+  }
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .step-item:not(:first-child)::before {
+    content: "";
+    position: absolute;
+    left: -1rem;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--line);
+  }
+}
+
+.step-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  margin: 0 0 1rem;
+  padding: 0;
+  flex: 0 0 auto;
+  align-self: stretch;
+  background: var(--line);
+}
+
+.step-num {
+  font-family: var(--font-display), Sora, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.admin-shell {
+  min-height: 100vh;
+  background: #0e1513;
+  color: #e6ece9;
+}
+
+.admin-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a100e;
+}
+
+.admin-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+}
+
+.admin-badge {
+  border-radius: 6px;
+  background: rgba(15, 107, 92, 0.25);
+  color: #7dd3c0;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
