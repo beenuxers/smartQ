@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "./lib/db";
 import { isPlatformAdmin } from "./lib/admin";
+import { authConfig } from "./auth.config";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -11,10 +12,7 @@ const credentialsSchema = z.object({
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -57,33 +55,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt: async ({ token, user }) => {
-      if (user) {
-        token.email = user.email;
-        token.organizationId = (user as { organizationId?: string }).organizationId;
-        token.role = (user as { role?: string }).role;
-        token.country = (user as { country?: string }).country;
-        token.locale = (user as { locale?: string }).locale;
-        token.plan = (user as { plan?: string }).plan;
-      }
-      // Re-check allowlist each request so ADMIN_EMAILS changes apply after re-login / token refresh
-      token.isPlatformAdmin = isPlatformAdmin(
-        (token.email as string | undefined) ?? user?.email,
-      );
-      return token;
-    },
-    session: async ({ session, token }) => {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
-        session.user.organizationId = token.organizationId as string | undefined;
-        session.user.role = token.role as string | undefined;
-        session.user.country = token.country as string | undefined;
-        session.user.locale = token.locale as string | undefined;
-        session.user.plan = token.plan as string | undefined;
-        session.user.isPlatformAdmin = Boolean(token.isPlatformAdmin);
-      }
-      return session;
-    },
-  },
 });

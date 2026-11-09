@@ -1,6 +1,9 @@
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { authConfig } from "@/auth.config";
 import { isPlatformAdmin } from "@/lib/admin";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const path = req.nextUrl.pathname;
