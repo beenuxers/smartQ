@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
 import { fulfillPaidPayment } from "@/lib/fulfill-payment";
 import { formatMoney, PLANS } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
+import { reconcilePendingStripePayments } from "@/lib/reconcile-stripe";
 import { getStripe } from "@/lib/stripe";
 
 export default async function BillingSuccessPage({
@@ -17,23 +19,37 @@ export default async function BillingSuccessPage({
 
   const params = await searchParams;
   let paymentId = params.paymentId;
+  const orgId = session.user.organizationId;
 
-  // Stripe redirects here with session_id — fulfill if webhook is slow.
-  if (params.session_id && process.env.STRIPE_SECRET_KEY) {
-    try {
-      const stripe = getStripe();
-      const checkout = await stripe.checkout.sessions.retrieve(params.session_id);
-      const metaPaymentId = checkout.metadata?.paymentId;
-      if (
-        metaPaymentId &&
-        checkout.metadata?.organizationId === session.user.organizationId &&
-        (checkout.payment_status === "paid" || checkout.status === "complete")
-      ) {
-        await fulfillPaidPayment(metaPaymentId);
-        paymentId = metaPaymentId;
+  if (isStripeBilling()) {
+    // Prefer explicit session_id from Stripe redirect.
+    if (params.session_id && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const stripe = getStripe();
+        const checkout = await stripe.checkout.sessions.retrieve(params.session_id);
+        const metaPaymentId = checkout.metadata?.paymentId;
+        if (
+          metaPaymentId &&
+          checkout.metadata?.organizationId === orgId &&
+          (checkout.payment_status === "paid" || checkout.status === "complete")
+        ) {
+          await prisma.payment.updateMany({
+            where: { id: metaPaymentId, providerRef: null },
+            data: { providerRef: checkout.id },
+          });
+          await fulfillPaidPayment(metaPaymentId);
+          paymentId = metaPaymentId;
+        }
+      } catch (err) {
+        console.error("Stripe success sync failed", err);
       }
+    }
+
+    // Heal any remaining pending Stripe rows for this org (incl. webhook miss).
+    try {
+      await reconcilePendingStripePayments(orgId);
     } catch (err) {
-      console.error("Stripe success sync failed", err);
+      console.error("Stripe reconcile on success page failed", err);
     }
   }
 
@@ -41,14 +57,17 @@ export default async function BillingSuccessPage({
     ? await prisma.payment.findFirst({
         where: {
           id: paymentId,
-          organizationId: session.user.organizationId,
+          organizationId: orgId,
           status: "paid",
         },
       })
-    : null;
+    : await prisma.payment.findFirst({
+        where: { organizationId: orgId, status: "paid", provider: "stripe" },
+        orderBy: { paidAt: "desc" },
+      });
 
   const org = await prisma.organization.findUniqueOrThrow({
-    where: { id: session.user.organizationId },
+    where: { id: orgId },
   });
 
   return (

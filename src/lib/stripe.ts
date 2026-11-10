@@ -4,9 +4,14 @@ import type { CurrencyCode } from "./product";
 let stripe: Stripe | null = null;
 
 export function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = (process.env.STRIPE_SECRET_KEY || "").trim();
   if (!key) {
     throw new Error("STRIPE_SECRET_KEY is not set");
+  }
+  if (key.includes("…") || /\.\.\.$/.test(key) || key.length < 20) {
+    throw new Error(
+      "STRIPE_SECRET_KEY looks truncated/placeholder — paste the full sk_test_ key from Stripe",
+    );
   }
   if (!stripe) {
     stripe = new Stripe(key, {

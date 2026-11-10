@@ -55,4 +55,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    jwt: async ({ token, user }) => {
+      if (user) {
+        token.email = user.email;
+        token.organizationId = (user as { organizationId?: string }).organizationId;
+        token.role = (user as { role?: string }).role;
+        token.country = (user as { country?: string }).country;
+        token.locale = (user as { locale?: string }).locale;
+        token.plan = (user as { plan?: string }).plan;
+      }
+
+      // Keep plan/market in sync after Stripe upgrades (Node auth path only).
+      const organizationId = token.organizationId as string | undefined;
+      if (organizationId) {
+        try {
+          const org = await prisma.organization.findUnique({
+            where: { id: organizationId },
+            select: { plan: true, country: true, locale: true },
+          });
+          if (org) {
+            token.plan = org.plan;
+            token.country = org.country;
+            token.locale = org.locale;
+          }
+        } catch (err) {
+          console.error("jwt org refresh failed", err);
+        }
+      }
+
+      token.isPlatformAdmin = isPlatformAdmin(
+        (token.email as string | undefined) ?? user?.email,
+      );
+      return token;
+    },
+  },
 });

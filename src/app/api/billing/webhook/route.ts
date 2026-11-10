@@ -37,6 +37,10 @@ export async function POST(req: Request) {
       }
 
       if (session.payment_status === "paid" || session.status === "complete") {
+        await prisma.payment.updateMany({
+          where: { id: paymentId },
+          data: { providerRef: session.id },
+        });
         let last4: string | null = null;
         if (typeof session.payment_intent === "string") {
           try {

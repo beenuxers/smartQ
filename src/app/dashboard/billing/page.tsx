@@ -4,11 +4,20 @@ import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
 import { PLANS, formatMoney, WHATSAPP_OVERAGE, getPlan } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
+import { reconcilePendingStripePayments } from "@/lib/reconcile-stripe";
 import { BillingActions } from "./billing-actions";
 
 export default async function BillingPage() {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
+
+  if (isStripeBilling()) {
+    try {
+      await reconcilePendingStripePayments(session.user.organizationId);
+    } catch (err) {
+      console.error("Stripe reconcile on billing page failed", err);
+    }
+  }
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },

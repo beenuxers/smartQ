@@ -88,6 +88,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Could not start Stripe Checkout" }, { status: 502 });
       }
 
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { providerRef: checkout.id },
+      });
+
       return NextResponse.json({
         ok: true,
         provider: "stripe",

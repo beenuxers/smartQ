@@ -43,6 +43,7 @@ model Payment {
   currency       String
   status         String       @default("pending") // pending | paid | failed | cancelled
   provider       String       @default("test")
+  providerRef    String? // Stripe Checkout Session id, etc.
   cardLast4      String?
   failureReason  String?
   organizationId String
@@ -51,6 +52,7 @@ model Payment {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
+  @@index([providerRef])
 }
 
 model Membership {
