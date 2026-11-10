@@ -68,6 +68,15 @@ export type Messages = {
   notifyFailed: string;
   actionFailed: string;
   queueFinished: string;
+  queueDayCutoff: string;
+  queueDayCutoffHint: string;
+  reportDay: string;
+  reportWeek: string;
+  reportMonth: string;
+  cancels: string;
+  notifiedCount: string;
+  last7QueueDays: string;
+  reportRangeNote: string;
 };
 
 const en: Messages = {
@@ -139,6 +148,16 @@ const en: Messages = {
   notifyFailed: "Queue updated; WhatsApp failed",
   actionFailed: "Action failed",
   queueFinished: "You're all set — thanks for visiting!",
+  queueDayCutoff: "Queue day reset time",
+  queueDayCutoffHint: "Queue numbers restart at this local time each day",
+  reportDay: "Day",
+  reportWeek: "Week",
+  reportMonth: "Month",
+  cancels: "Cancels",
+  notifiedCount: "Notified",
+  last7QueueDays: "Last 7 queue days",
+  reportRangeNote:
+    "Day uses your queue reset cutoff. Week and month use the calendar in the outlet timezone.",
 };
 
 const ms: Messages = {
@@ -281,6 +300,16 @@ const id: Messages = {
   notifyFailed: "Diperbarui; WhatsApp gagal",
   actionFailed: "Tindakan gagal",
   queueFinished: "Selesai — terima kasih!",
+  queueDayCutoff: "Waktu reset nomor antrean",
+  queueDayCutoffHint: "Nomor antrean mulai ulang pada jam ini setiap hari",
+  reportDay: "Hari",
+  reportWeek: "Minggu",
+  reportMonth: "Bulan",
+  cancels: "Batal",
+  notifiedCount: "Diberitahu",
+  last7QueueDays: "7 hari antrean terakhir",
+  reportRangeNote:
+    "Hari memakai waktu reset antrean. Minggu dan bulan memakai kalender zona waktu outlet.",
 };
 
 const dictionaries: Record<LocaleCode, Messages> = { en, ms, id };

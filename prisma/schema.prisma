@@ -77,6 +77,8 @@ model Outlet {
   dinnerStart    String       @default("17:00")
   dinnerEnd      String       @default("22:00")
   activeSession  String       @default("all") // lunch | dinner | all
+  /** HH:mm local — queue # resets at this time each day (default 04:00). */
+  queueDayCutoff String       @default("04:00")
   isActive       Boolean      @default(true)
   organizationId String
   createdAt      DateTime     @default(now())

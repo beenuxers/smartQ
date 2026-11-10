@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getPartiesAhead } from "@/lib/analytics";
 import { canAcceptSeating, canSendWhatsApp, recordSeating, recordWhatsApp } from "@/lib/usage";
 import { isWithinSession } from "@/lib/session-hours";
+import { allocateNextQueueNumber } from "@/lib/next-queue-number";
 import { makePartyToken } from "@/lib/slug";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
@@ -53,14 +54,7 @@ export async function POST(
 
   try {
     const body = schema.parse(await req.json());
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const last = await prisma.party.findFirst({
-      where: { outletId: outlet.id, joinedAt: { gte: start } },
-      orderBy: { queueNumber: "desc" },
-    });
-    const queueNumber = (last?.queueNumber ?? 0) + 1;
+    const { queueNumber } = await allocateNextQueueNumber(outlet);
     const token = makePartyToken();
     const origin = new URL(req.url).origin;
     const positionUrl = `${origin}/q/${token}`;

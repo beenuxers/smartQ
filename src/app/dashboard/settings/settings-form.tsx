@@ -15,12 +15,16 @@ export function SettingsForm({
     lunchEnd: string;
     dinnerStart: string;
     dinnerEnd: string;
+    queueDayCutoff: string;
+    timezone: string;
   };
   labels: {
     sessionHours: string;
     lunch: string;
     dinner: string;
     allDay: string;
+    queueDayCutoff: string;
+    queueDayCutoffHint: string;
   };
 }) {
   const router = useRouter();
@@ -39,6 +43,7 @@ export function SettingsForm({
         lunchEnd: form.get("lunchEnd"),
         dinnerStart: form.get("dinnerStart"),
         dinnerEnd: form.get("dinnerEnd"),
+        queueDayCutoff: form.get("queueDayCutoff"),
       }),
     });
     setMessage(res.ok ? "Saved" : "Could not save");
@@ -77,6 +82,18 @@ export function SettingsForm({
           <input name="dinnerEnd" defaultValue={outlet.dinnerEnd} />
         </label>
       </div>
+      <label className="field">
+        <span>{labels.queueDayCutoff}</span>
+        <input
+          name="queueDayCutoff"
+          type="time"
+          defaultValue={outlet.queueDayCutoff || "04:00"}
+          required
+        />
+        <span className="mt-1 text-xs text-muted">
+          {labels.queueDayCutoffHint} ({outlet.timezone})
+        </span>
+      </label>
       {message ? <p className="text-sm text-success">{message}</p> : null}
       <button className="btn btn-primary">Save settings</button>
     </form>

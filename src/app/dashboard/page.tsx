@@ -19,8 +19,14 @@ export default async function DashboardPage() {
   if (!outlet) redirect("/dashboard/settings");
 
   const [board, stats] = await Promise.all([
-    getQueueBoard(outlet.id),
-    getOutletDailyStats(outlet.id),
+    getQueueBoard(outlet.id, {
+      timezone: outlet.timezone,
+      queueDayCutoff: outlet.queueDayCutoff,
+    }),
+    getOutletDailyStats(outlet.id, new Date(), {
+      timezone: outlet.timezone,
+      queueDayCutoff: outlet.queueDayCutoff,
+    }),
   ]);
   const plan = getPlan(org.plan);
   const t = getMessages(resolveLocale(org.locale));

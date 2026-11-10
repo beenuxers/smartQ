@@ -10,6 +10,10 @@ const schema = z.object({
   lunchEnd: z.string().optional(),
   dinnerStart: z.string().optional(),
   dinnerEnd: z.string().optional(),
+  queueDayCutoff: z
+    .string()
+    .regex(/^\d{1,2}:\d{2}$/, "Use HH:mm")
+    .optional(),
 });
 
 export async function PATCH(

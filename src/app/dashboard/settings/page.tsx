@@ -31,12 +31,16 @@ export default async function SettingsPage() {
           lunchEnd: outlet.lunchEnd,
           dinnerStart: outlet.dinnerStart,
           dinnerEnd: outlet.dinnerEnd,
+          queueDayCutoff: outlet.queueDayCutoff,
+          timezone: outlet.timezone,
         }}
         labels={{
           sessionHours: t.sessionHours,
           lunch: t.lunch,
           dinner: t.dinner,
           allDay: t.allDay,
+          queueDayCutoff: t.queueDayCutoff,
+          queueDayCutoffHint: t.queueDayCutoffHint,
         }}
       />
       <MarketForm

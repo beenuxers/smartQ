@@ -1,18 +1,7 @@
 import { prisma } from "./db";
+import { getQueueDayWindow } from "./queue-day";
 
 export type QueueParty = Awaited<ReturnType<typeof getQueueBoard>>["waiting"][number];
-
-function startOfDay(day = new Date()) {
-  const start = new Date(day);
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
-function endOfDay(day = new Date()) {
-  const end = new Date(day);
-  end.setHours(23, 59, 59, 999);
-  return end;
-}
 
 export function serializeParty(p: {
   id: string;
@@ -49,9 +38,26 @@ export function serializeParty(p: {
   };
 }
 
-export async function getQueueBoard(outletId: string, day = new Date()) {
-  const start = startOfDay(day);
-  const end = endOfDay(day);
+export async function getQueueBoard(
+  outletId: string,
+  opts?: { timezone?: string; queueDayCutoff?: string; now?: Date },
+) {
+  let timezone = opts?.timezone;
+  let queueDayCutoff = opts?.queueDayCutoff;
+  if (!timezone || !queueDayCutoff) {
+    const outlet = await prisma.outlet.findUniqueOrThrow({
+      where: { id: outletId },
+      select: { timezone: true, queueDayCutoff: true },
+    });
+    timezone = timezone ?? outlet.timezone;
+    queueDayCutoff = queueDayCutoff ?? outlet.queueDayCutoff;
+  }
+
+  const { dayStart, dayEnd } = getQueueDayWindow(
+    opts?.now ?? new Date(),
+    timezone,
+    queueDayCutoff || "04:00",
+  );
 
   const [waiting, called, doneToday] = await Promise.all([
     prisma.party.findMany({
@@ -67,14 +73,14 @@ export async function getQueueBoard(outletId: string, day = new Date()) {
         outletId,
         status: { in: ["seated", "no_show", "cancelled"] },
         OR: [
-          { completedAt: { gte: start, lte: end } },
-          { seatedAt: { gte: start, lte: end } },
-          { joinedAt: { gte: start, lte: end } },
+          { completedAt: { gte: dayStart, lt: dayEnd } },
+          { seatedAt: { gte: dayStart, lt: dayEnd } },
+          { joinedAt: { gte: dayStart, lt: dayEnd } },
         ],
       },
       orderBy: [{ completedAt: "desc" }, { joinedAt: "desc" }],
     }),
   ]);
 
-  return { waiting, called, doneToday };
+  return { waiting, called, doneToday, dayStart, dayEnd };
 }
