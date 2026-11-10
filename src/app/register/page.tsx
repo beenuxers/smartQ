@@ -2,18 +2,33 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TurnstileField } from "@/components/turnstile-field";
+
+const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+
+  const onToken = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (siteKey && !turnstileToken) {
+      setLoading(false);
+      setError("Complete the bot check and try again");
+      return;
+    }
+
     const form = new FormData(e.currentTarget);
     const payload = {
       name: String(form.get("name")),
@@ -22,6 +37,7 @@ export default function RegisterPage() {
       outletName: String(form.get("outletName")),
       country: String(form.get("country")),
       currency: String(form.get("currency") || "USD"),
+      turnstileToken: turnstileToken || undefined,
     };
 
     const res = await fetch("/api/register", {
@@ -32,6 +48,7 @@ export default function RegisterPage() {
     const data = await res.json();
     if (!res.ok) {
       setLoading(false);
+      setTurnstileToken("");
       setError(data.error || "Registration failed");
       return;
     }
@@ -95,8 +112,15 @@ export default function RegisterPage() {
           </label>
           <label className="field">
             <span>Password</span>
-            <input name="password" type="password" required minLength={6} autoComplete="new-password" />
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
           </label>
+          {siteKey ? <TurnstileField siteKey={siteKey} onToken={onToken} /> : null}
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           <button className="btn btn-primary w-full" disabled={loading}>
             {loading ? "Creating…" : "Create free outlet"}

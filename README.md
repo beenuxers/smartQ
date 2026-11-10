@@ -61,3 +61,14 @@ Non-allowlisted users who hit `/admin` are redirected to `/dashboard`.
 ## Env
 
 Copy `.env.example` to `.env`. Set `WHATSAPP_*` to send real messages; otherwise joins/notify log to the server console. Set `ADMIN_EMAILS` for platform access.
+
+## Auth hardening
+
+Signup and login are rate-limited. Signup also supports **Cloudflare Turnstile**.
+
+1. Create a Turnstile widget in the [Cloudflare dashboard](https://dash.cloudflare.com/) (Managed / non-interactive is fine).
+2. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` on Vercel (and locally if you want to test the widget).
+3. If keys are unset, the bot check is skipped (convenient for local DX).
+4. Optional but recommended in production: create a free [Upstash Redis](https://upstash.com/) database and set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` so rate limits are shared across serverless instances.
+
+Limits (defaults): register **5 / IP / hour**; login **30 / IP / 15 min** and **10 failed attempts / email / 15 min**.

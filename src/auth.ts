@@ -5,11 +5,23 @@ import { z } from "zod";
 import { prisma } from "./lib/db";
 import { isPlatformAdmin } from "./lib/admin";
 import { authConfig } from "./auth.config";
+import {
+  clientIp,
+  peekRateLimit,
+  rateLimit,
+  recordFailure,
+  resetRateLimit,
+} from "./lib/rate-limit";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
+
+const LOGIN_IP_LIMIT = 30;
+const LOGIN_IP_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_EMAIL_LIMIT = 10;
+const LOGIN_EMAIL_WINDOW_MS = 15 * 60 * 1000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -19,12 +31,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: {},
         password: {},
       },
-      authorize: async (raw) => {
+      authorize: async (raw, request) => {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 
+        const email = parsed.data.email.toLowerCase();
+        const ip = request ? clientIp(request) : "unknown";
+
+        const ipLimit = await rateLimit({
+          key: `login:ip:${ip}`,
+          limit: LOGIN_IP_LIMIT,
+          windowMs: LOGIN_IP_WINDOW_MS,
+        });
+        if (!ipLimit.ok) return null;
+
+        const emailLock = await peekRateLimit({
+          key: `login:email:${email}`,
+          limit: LOGIN_EMAIL_LIMIT,
+          windowMs: LOGIN_EMAIL_WINDOW_MS,
+        });
+        if (!emailLock.ok) return null;
+
         const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email.toLowerCase() },
+          where: { email },
           include: {
             memberships: {
               include: { organization: true },
@@ -32,13 +61,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           },
         });
-        if (!user) return null;
+        if (!user) {
+          await recordFailure({
+            key: `login:email:${email}`,
+            limit: LOGIN_EMAIL_LIMIT,
+            windowMs: LOGIN_EMAIL_WINDOW_MS,
+          });
+          return null;
+        }
 
         const valid = await bcrypt.compare(
           parsed.data.password,
           user.passwordHash,
         );
-        if (!valid) return null;
+        if (!valid) {
+          await recordFailure({
+            key: `login:email:${email}`,
+            limit: LOGIN_EMAIL_LIMIT,
+            windowMs: LOGIN_EMAIL_WINDOW_MS,
+          });
+          return null;
+        }
+
+        await resetRateLimit(`login:email:${email}`);
 
         const membership = user.memberships[0];
         return {

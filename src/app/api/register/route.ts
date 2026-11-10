@@ -7,7 +7,9 @@ import {
   type CountryCode,
   type CurrencyCode,
 } from "@/lib/product";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { makeOutletSlug } from "@/lib/slug";
+import { turnstileEnabled, verifyTurnstileToken } from "@/lib/turnstile";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -17,11 +19,36 @@ const schema = z.object({
   country: z.enum(["SG", "ID", "MY"]),
   /** Prefer USD; pass local or "auto" to use territory currency. */
   currency: z.enum(["USD", "SGD", "IDR", "MYR", "auto"]).default("USD"),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(req: Request) {
   try {
+    const ip = clientIp(req);
+    const limited = await rateLimit({
+      key: `register:ip:${ip}`,
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!limited.ok) {
+      return NextResponse.json(
+        {
+          error: `Too many signups from this network. Try again in ${limited.retryAfterSec}s.`,
+        },
+        { status: 429 },
+      );
+    }
+
     const body = schema.parse(await req.json());
+
+    const captcha = await verifyTurnstileToken(body.turnstileToken, ip);
+    if (!captcha.ok) {
+      return NextResponse.json(
+        { error: captcha.error || "Bot check failed" },
+        { status: 400 },
+      );
+    }
+
     const email = body.email.toLowerCase();
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -81,6 +108,7 @@ export async function POST(req: Request) {
       email: user.email,
       organizationId: org.id,
       outletSlug: org.outlets[0]?.slug,
+      turnstileRequired: turnstileEnabled(),
     });
   } catch (error) {
     console.error(error);
