@@ -173,7 +173,13 @@ export function HostWaitlist({
       if (action === "notify") {
         if (data.whatsapp?.skipped) setMessage(labels.notifySkipped);
         else if (data.whatsapp?.ok) setMessage(labels.notifyOk);
-        else setMessage(labels.notifyFailed);
+        else {
+          setMessage(
+            data.whatsapp?.error
+              ? `${labels.notifyFailed}: ${String(data.whatsapp.error).slice(0, 120)}`
+              : labels.notifyFailed,
+          );
+        }
       }
       setSeatParty(null);
       if (action === "seated") setTab("dining");
@@ -318,7 +324,7 @@ export function HostWaitlist({
           {rows.map((party) => (
             <article
               key={party.id}
-              className="panel flex flex-wrap items-center justify-between gap-4"
+              className="panel flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4"
             >
               <button
                 type="button"
@@ -345,7 +351,37 @@ export function HostWaitlist({
                 </div>
                 <div className="mt-1 text-xs text-accent-dark">{labels.viewEdit}</div>
               </button>
-              <div className="flex flex-wrap gap-2">
+              {/* Mobile: one primary action; open card for the rest */}
+              <div className="flex w-full flex-col gap-2 md:hidden">
+                {tab === "done" ? (
+                  <button
+                    className="btn btn-secondary min-h-11 w-full"
+                    disabled={busy}
+                    onClick={() => act(party.id, "restore")}
+                  >
+                    {labels.restore}
+                  </button>
+                ) : tab === "dining" ? (
+                  <button
+                    className="btn btn-primary min-h-11 w-full"
+                    disabled={busy}
+                    onClick={() => act(party.id, "finish")}
+                  >
+                    {labels.finishDining}
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary min-h-11 w-full"
+                    disabled={busy}
+                    onClick={() => act(party.id, "notify")}
+                  >
+                    {party.status === "notified" ? labels.notifyAgain : labels.notify}
+                  </button>
+                )}
+              </div>
+
+              {/* Desktop: full action row */}
+              <div className="hidden flex-wrap gap-2 md:flex">
                 {tab === "done" ? (
                   <button
                     className="btn btn-secondary"

@@ -60,7 +60,25 @@ Non-allowlisted users who hit `/admin` are redirected to `/dashboard`.
 
 ## Env
 
-Copy `.env.example` to `.env`. Set `WHATSAPP_*` to send real messages; otherwise joins/notify log to the server console. Set `ADMIN_EMAILS` for platform access.
+Copy `.env.example` to `.env`. Set `ADMIN_EMAILS` for platform access.
+
+### WhatsApp Cloud API
+
+Without credentials, joins/notify **log to the server console** (no Meta charge).
+
+For real messages on Vercel:
+
+1. Create a Meta Business + WhatsApp Cloud API app; add a phone number.
+2. Set `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`.
+3. Cold outreach usually needs **approved utility templates**. Create e.g. `smartq_joined` and `smartq_table_ready`, then set:
+   - `WHATSAPP_TEMPLATE_JOINED`
+   - `WHATSAPP_TEMPLATE_TABLE_READY`
+   - `WHATSAPP_TEMPLATE_LANG` (default `en`)
+4. Template body params (must match approval):
+   - **joined:** outlet name, queue #, parties ahead, track URL
+   - **table_ready:** outlet name, queue #, track URL
+
+If templates are unset but token/id are set, SmartQ falls back to plain text (often blocked outside a customer session).
 
 ## Auth (required on Vercel)
 
@@ -79,3 +97,28 @@ Signup and login are rate-limited. Signup also supports **Cloudflare Turnstile**
 4. Optional but recommended in production: create a free [Upstash Redis](https://upstash.com/) database and set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` so rate limits are shared across serverless instances.
 
 Limits (defaults): register **5 / IP / hour**; login **30 / IP / 15 min** and **10 failed attempts / email / 15 min**.
+
+## Pilot checklist
+
+Before putting SmartQ in front of a real cafe:
+
+**Env (Vercel Production)**
+
+- [ ] `AUTH_SECRET` set (non-empty)
+- [ ] `AUTH_URL` = production origin (not localhost)
+- [ ] `DATABASE_URL` = Neon/Postgres
+- [ ] Turnstile keys (optional but recommended)
+- [ ] Upstash Redis (optional; shared rate limits)
+- [ ] WhatsApp token + phone number id + templates (for real Notify)
+- [ ] `BILLING_PROVIDER=local` is fine for a pilot (Stripe later)
+
+**Dry-run**
+
+1. Open `/api/health` → `ok: true`
+2. Register / log in on phone
+3. Guest QR join with your WhatsApp number
+4. Host **Notify** → real WhatsApp arrives
+5. **Seated** → party in Dining; **Dining now** increments
+6. **Finish dining** → Done shows **Finished**; Dining now back to 0
+
+On mobile, list cards show one primary action (Notify / Finish / Restore); open **View / edit** for Seated, No-show, Cancel, etc.

@@ -37,7 +37,12 @@ export async function POST(
 
   if (body.action === "notify") {
     const wa = await canSendWhatsApp(party.outlet.organizationId);
-    let whatsapp: { ok: boolean; provider: string; skipped?: boolean } = {
+    let whatsapp: {
+      ok: boolean;
+      provider: string;
+      skipped?: boolean;
+      error?: string;
+    } = {
       ok: false,
       provider: "none",
       skipped: true,
@@ -51,7 +56,11 @@ export async function POST(
         positionUrl: party.positionLink,
       });
       if (sent.ok) await recordWhatsApp(party.outlet.organizationId);
-      whatsapp = { ok: sent.ok, provider: sent.provider };
+      whatsapp = {
+        ok: sent.ok,
+        provider: sent.provider,
+        ...(sent.error ? { error: sent.error } : {}),
+      };
     }
 
     const updated = await prisma.party.update({
