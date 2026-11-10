@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireOrgAccess } from "@/lib/access";
 import { prisma } from "@/lib/db";
 import { serializeParty } from "@/lib/queue";
 
@@ -15,19 +15,19 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.organizationId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await ctx.params;
   const party = await prisma.party.findUnique({
     where: { id },
     include: { outlet: true },
   });
 
-  if (!party || party.outlet.organizationId !== session.user.organizationId) {
+  if (!party) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const access = await requireOrgAccess(party.outlet.organizationId);
+  if (!access) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {

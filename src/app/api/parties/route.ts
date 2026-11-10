@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireOrgAccess } from "@/lib/access";
 import { getPartiesAhead } from "@/lib/analytics";
 import { prisma } from "@/lib/db";
 import { serializeParty } from "@/lib/queue";
@@ -19,13 +19,8 @@ const schema = z.object({
   sendJoinedMessage: z.boolean().optional().default(true),
 });
 
-/** Host walk-in: create a party on an owned outlet. */
+/** Host walk-in: create a party on an owned outlet (or platform admin support). */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.organizationId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const body = schema.parse(await req.json());
     const outlet = await prisma.outlet.findUnique({
@@ -33,8 +28,13 @@ export async function POST(req: Request) {
       include: { organization: true },
     });
 
-    if (!outlet || outlet.organizationId !== session.user.organizationId) {
+    if (!outlet) {
       return NextResponse.json({ error: "Outlet not found" }, { status: 404 });
+    }
+
+    const access = await requireOrgAccess(outlet.organizationId);
+    if (!access) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!outlet.isActive) {
       return NextResponse.json({ error: "Outlet is inactive" }, { status: 403 });

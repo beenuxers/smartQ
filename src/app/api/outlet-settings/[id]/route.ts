@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/auth";
+import { requireOrgAccess } from "@/lib/access";
 import { prisma } from "@/lib/db";
 
 const schema = z.object({
@@ -14,21 +14,23 @@ const schema = z.object({
     .string()
     .regex(/^\d{1,2}:\d{2}$/, "Use HH:mm")
     .optional(),
+  timezone: z.string().min(3).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (!session?.user?.organizationId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await ctx.params;
   const outlet = await prisma.outlet.findUnique({ where: { id } });
-  if (!outlet || outlet.organizationId !== session.user.organizationId) {
+  if (!outlet) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const access = await requireOrgAccess(outlet.organizationId);
+  if (!access) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = schema.parse(await req.json());
