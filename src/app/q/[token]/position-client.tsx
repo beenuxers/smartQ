@@ -24,6 +24,8 @@ export function PositionClient({
     tableReady: string;
     seated: string;
     noShow: string;
+    cancelled: string;
+    queueFinished: string;
   };
 }) {
   const [data, setData] = useState(initial);
@@ -38,6 +40,11 @@ export function PositionClient({
     return () => clearInterval(id);
   }, [token]);
 
+  const finished =
+    data.status === "seated" ||
+    data.status === "no_show" ||
+    data.status === "cancelled";
+
   const statusLabel =
     data.status === "notified"
       ? labels.tableReady
@@ -45,7 +52,9 @@ export function PositionClient({
         ? labels.seated
         : data.status === "no_show"
           ? labels.noShow
-          : labels.waiting;
+          : data.status === "cancelled"
+            ? labels.cancelled
+            : labels.waiting;
 
   const ready = data.status === "notified";
 
@@ -58,28 +67,44 @@ export function PositionClient({
       <div className="display mt-1 text-6xl font-semibold tracking-tight">
         #{data.queueNumber}
       </div>
-      <div
-        className="mt-6 flex items-center justify-between px-4 py-3"
-        style={{
-          borderRadius: "var(--radius-sm)",
-          background: "var(--accent-soft)",
-        }}
-      >
-        <span className="text-sm text-muted">{labels.position}</span>
-        <strong className="display text-2xl font-semibold">{data.partiesAhead}</strong>
-      </div>
-      <div
-        className={`mt-4 px-4 py-3 text-center text-sm font-semibold ${
-          ready ? "text-accent-dark" : "text-foreground"
-        }`}
-        style={{
-          borderRadius: "var(--radius-sm)",
-          background: ready ? "var(--accent-soft)" : "var(--background)",
-          border: ready ? "1px solid transparent" : "1px solid var(--line)",
-        }}
-      >
-        {statusLabel}
-      </div>
+
+      {finished ? (
+        <div
+          className="mt-6 px-4 py-4 text-center text-sm font-semibold"
+          style={{
+            borderRadius: "var(--radius-sm)",
+            background: "var(--accent-soft)",
+          }}
+        >
+          <div>{statusLabel}</div>
+          <p className="mt-2 font-normal text-muted">{labels.queueFinished}</p>
+        </div>
+      ) : (
+        <>
+          <div
+            className="mt-6 flex items-center justify-between px-4 py-3"
+            style={{
+              borderRadius: "var(--radius-sm)",
+              background: "var(--accent-soft)",
+            }}
+          >
+            <span className="text-sm text-muted">{labels.position}</span>
+            <strong className="display text-2xl font-semibold">{data.partiesAhead}</strong>
+          </div>
+          <div
+            className={`mt-4 px-4 py-3 text-center text-sm font-semibold ${
+              ready ? "text-accent-dark" : "text-foreground"
+            }`}
+            style={{
+              borderRadius: "var(--radius-sm)",
+              background: ready ? "var(--accent-soft)" : "var(--background)",
+              border: ready ? "1px solid transparent" : "1px solid var(--line)",
+            }}
+          >
+            {statusLabel}
+          </div>
+        </>
+      )}
     </div>
   );
 }

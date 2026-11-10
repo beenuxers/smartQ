@@ -50,6 +50,24 @@ export type Messages = {
   marketLanguage: string;
   billingCurrency: string;
   uiLanguage: string;
+  notifyAgain: string;
+  cancel: string;
+  restore: string;
+  cancelled: string;
+  tabWaiting: string;
+  tabCalled: string;
+  tabDone: string;
+  emptyCalled: string;
+  emptyDone: string;
+  waitMins: string;
+  addWalkIn: string;
+  viewEdit: string;
+  close: string;
+  notifyOk: string;
+  notifySkipped: string;
+  notifyFailed: string;
+  actionFailed: string;
+  queueFinished: string;
 };
 
 const en: Messages = {
@@ -103,6 +121,24 @@ const en: Messages = {
   marketLanguage: "Market & language",
   billingCurrency: "Billing currency",
   uiLanguage: "UI language",
+  notifyAgain: "Notify again",
+  cancel: "Cancel",
+  restore: "Restore to waiting",
+  cancelled: "Cancelled",
+  tabWaiting: "Waiting",
+  tabCalled: "Called",
+  tabDone: "Done today",
+  emptyCalled: "No parties called",
+  emptyDone: "No completed parties today",
+  waitMins: "wait",
+  addWalkIn: "Add walk-in",
+  viewEdit: "View / edit",
+  close: "Close",
+  notifyOk: "WhatsApp sent",
+  notifySkipped: "Notified in queue (WhatsApp quota skipped)",
+  notifyFailed: "Queue updated; WhatsApp failed",
+  actionFailed: "Action failed",
+  queueFinished: "You're all set — thanks for visiting!",
 };
 
 const ms: Messages = {
@@ -156,6 +192,24 @@ const ms: Messages = {
   marketLanguage: "Pasaran & bahasa",
   billingCurrency: "Mata wang bil",
   uiLanguage: "Bahasa UI",
+  notifyAgain: "Maklumkan semula",
+  cancel: "Batal",
+  restore: "Kembalikan ke menunggu",
+  cancelled: "Dibatalkan",
+  tabWaiting: "Menunggu",
+  tabCalled: "Dipanggil",
+  tabDone: "Selesai hari ini",
+  emptyCalled: "Tiada tetamu dipanggil",
+  emptyDone: "Tiada tetamu selesai hari ini",
+  waitMins: "tunggu",
+  addWalkIn: "Tambah walk-in",
+  viewEdit: "Lihat / edit",
+  close: "Tutup",
+  notifyOk: "WhatsApp dihantar",
+  notifySkipped: "Dikemas kini (kuota WhatsApp dilangkau)",
+  notifyFailed: "Dikemas kini; WhatsApp gagal",
+  actionFailed: "Tindakan gagal",
+  queueFinished: "Selesai — terima kasih!",
 };
 
 const id: Messages = {
@@ -209,6 +263,24 @@ const id: Messages = {
   marketLanguage: "Pasar & bahasa",
   billingCurrency: "Mata uang tagihan",
   uiLanguage: "Bahasa UI",
+  notifyAgain: "Beritahu lagi",
+  cancel: "Batalkan",
+  restore: "Kembalikan ke menunggu",
+  cancelled: "Dibatalkan",
+  tabWaiting: "Menunggu",
+  tabCalled: "Dipanggil",
+  tabDone: "Selesai hari ini",
+  emptyCalled: "Tidak ada tamu dipanggil",
+  emptyDone: "Tidak ada tamu selesai hari ini",
+  waitMins: "tunggu",
+  addWalkIn: "Tambah walk-in",
+  viewEdit: "Lihat / edit",
+  close: "Tutup",
+  notifyOk: "WhatsApp terkirim",
+  notifySkipped: "Diperbarui (kuota WhatsApp dilewati)",
+  notifyFailed: "Diperbarui; WhatsApp gagal",
+  actionFailed: "Tindakan gagal",
+  queueFinished: "Selesai — terima kasih!",
 };
 
 const dictionaries: Record<LocaleCode, Messages> = { en, ms, id };

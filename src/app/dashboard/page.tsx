@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { getOutletDailyStats, getWaitingParties } from "@/lib/analytics";
+import { getOutletDailyStats } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
 import { getPlan } from "@/lib/pricing";
+import { getQueueBoard, serializeParty } from "@/lib/queue";
 import { HostWaitlist } from "./host-waitlist";
 
 export default async function DashboardPage() {
@@ -17,8 +18,8 @@ export default async function DashboardPage() {
   const outlet = org.outlets[0];
   if (!outlet) redirect("/dashboard/settings");
 
-  const [waiting, stats] = await Promise.all([
-    getWaitingParties(outlet.id),
+  const [board, stats] = await Promise.all([
+    getQueueBoard(outlet.id),
     getOutletDailyStats(outlet.id),
   ]);
   const plan = getPlan(org.plan);
@@ -63,23 +64,42 @@ export default async function DashboardPage() {
       </div>
 
       <HostWaitlist
-        initial={waiting.map((p) => ({
-          id: p.id,
-          queueNumber: p.queueNumber,
-          guestName: p.guestName,
-          partySize: p.partySize,
-          phone: p.phone,
-          notes: p.notes,
-          status: p.status,
-          joinedAt: p.joinedAt.toISOString(),
-        }))}
+        outletId={outlet.id}
+        outletSlug={outlet.slug}
+        initialWaiting={board.waiting.map(serializeParty)}
+        initialCalled={board.called.map(serializeParty)}
+        initialDone={board.doneToday.map(serializeParty)}
         labels={{
           notify: t.notify,
+          notifyAgain: t.notifyAgain,
           markSeated: t.markSeated,
           markNoShow: t.markNoShow,
+          cancel: t.cancel,
+          restore: t.restore,
           emptyQueue: t.emptyQueue,
+          emptyCalled: t.emptyCalled,
+          emptyDone: t.emptyDone,
           waiting: t.waiting,
           notified: t.notified,
+          seated: t.seated,
+          noShow: t.noShow,
+          cancelled: t.cancelled,
+          tabWaiting: t.tabWaiting,
+          tabCalled: t.tabCalled,
+          tabDone: t.tabDone,
+          waitMins: t.waitMins,
+          addWalkIn: t.addWalkIn,
+          viewEdit: t.viewEdit,
+          save: t.save,
+          close: t.close,
+          guestName: t.guestName,
+          partySize: t.partySize,
+          phone: t.phone,
+          notes: t.notes,
+          notifyOk: t.notifyOk,
+          notifySkipped: t.notifySkipped,
+          notifyFailed: t.notifyFailed,
+          actionFailed: t.actionFailed,
         }}
       />
     </div>

@@ -1,9 +1,9 @@
 "use client";
 
+import { FormEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
 
-type PartyRow = {
+export type PartyRow = {
   id: string;
   queueNumber: number;
   guestName: string;
@@ -12,96 +12,481 @@ type PartyRow = {
   notes: string | null;
   status: string;
   joinedAt: string;
+  notifiedAt?: string | null;
+  seatedAt?: string | null;
+  completedAt?: string | null;
+  positionLink?: string;
+  waitMinutes: number;
+};
+
+type Tab = "waiting" | "called" | "done";
+
+export type HostQueueLabels = {
+  notify: string;
+  notifyAgain: string;
+  markSeated: string;
+  markNoShow: string;
+  cancel: string;
+  restore: string;
+  emptyQueue: string;
+  emptyCalled: string;
+  emptyDone: string;
+  waiting: string;
+  notified: string;
+  seated: string;
+  noShow: string;
+  cancelled: string;
+  tabWaiting: string;
+  tabCalled: string;
+  tabDone: string;
+  waitMins: string;
+  addWalkIn: string;
+  viewEdit: string;
+  save: string;
+  close: string;
+  guestName: string;
+  partySize: string;
+  phone: string;
+  notes: string;
+  notifyOk: string;
+  notifySkipped: string;
+  notifyFailed: string;
+  actionFailed: string;
 };
 
 export function HostWaitlist({
-  initial,
+  outletId,
+  outletSlug,
+  initialWaiting,
+  initialCalled,
+  initialDone,
   labels,
 }: {
-  initial: PartyRow[];
-  labels: {
-    notify: string;
-    markSeated: string;
-    markNoShow: string;
-    emptyQueue: string;
-    waiting: string;
-    notified: string;
-  };
+  outletId: string;
+  outletSlug: string;
+  initialWaiting: PartyRow[];
+  initialCalled: PartyRow[];
+  initialDone: PartyRow[];
+  labels: HostQueueLabels;
 }) {
   const router = useRouter();
-  const [rows, setRows] = useState(initial);
+  const [tab, setTab] = useState<Tab>("waiting");
+  const [waiting, setWaiting] = useState(initialWaiting);
+  const [called, setCalled] = useState(initialCalled);
+  const [done, setDone] = useState(initialDone);
   const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showWalkIn, setShowWalkIn] = useState(false);
 
-  async function act(id: string, action: "notify" | "seated" | "no_show") {
+  const applyBoard = useCallback(
+    (board: { waiting: PartyRow[]; called: PartyRow[]; doneToday: PartyRow[] }) => {
+      setWaiting(board.waiting);
+      setCalled(board.called);
+      setDone(board.doneToday);
+    },
+    [],
+  );
+
+  const refreshBoard = useCallback(async () => {
+    const res = await fetch(`/api/outlets/${outletSlug}/queue`);
+    if (!res.ok) return;
+    const json = await res.json();
+    applyBoard(json);
+    startTransition(() => router.refresh());
+  }, [applyBoard, outletSlug, router]);
+
+  useEffect(() => {
+    setWaiting(initialWaiting);
+    setCalled(initialCalled);
+    setDone(initialDone);
+  }, [initialWaiting, initialCalled, initialDone]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      void refreshBoard();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [refreshBoard]);
+
+  const selected = useMemo(() => {
+    const all = [...waiting, ...called, ...done];
+    return all.find((p) => p.id === selectedId) ?? null;
+  }, [waiting, called, done, selectedId]);
+
+  const rows = tab === "waiting" ? waiting : tab === "called" ? called : done;
+
+  async function act(
+    id: string,
+    action: "notify" | "seated" | "no_show" | "cancel" | "restore",
+  ) {
+    setMessage("");
     const res = await fetch(`/api/parties/${id}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
     });
-    if (!res.ok) return;
-    if (action === "notify") {
-      setRows((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: "notified" } : p)),
-      );
-    } else {
-      setRows((prev) => prev.filter((p) => p.id !== id));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessage(data.error || labels.actionFailed);
+      return;
     }
-    startTransition(() => router.refresh());
+    if (action === "notify") {
+      if (data.whatsapp?.skipped) setMessage(labels.notifySkipped);
+      else if (data.whatsapp?.ok) setMessage(labels.notifyOk);
+      else setMessage(labels.notifyFailed);
+    }
+    await refreshBoard();
   }
 
-  if (rows.length === 0) {
-    return <div className="panel text-sm text-muted">{labels.emptyQueue}</div>;
+  async function saveParty(payload: {
+    guestName: string;
+    partySize: number;
+    phone: string;
+    notes: string;
+  }) {
+    if (!selectedId) return;
+    const res = await fetch(`/api/parties/${selectedId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guestName: payload.guestName,
+        partySize: payload.partySize,
+        phone: payload.phone,
+        notes: payload.notes || null,
+      }),
+    });
+    if (!res.ok) {
+      setMessage(labels.actionFailed);
+      return;
+    }
+    await refreshBoard();
+    setMessage(labels.save);
+  }
+
+  async function addWalkIn(payload: {
+    guestName: string;
+    partySize: number;
+    phone: string;
+    notes: string;
+  }) {
+    setMessage("");
+    const res = await fetch("/api/parties", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        outletId,
+        guestName: payload.guestName,
+        partySize: payload.partySize,
+        phone: payload.phone,
+        notes: payload.notes || undefined,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessage(data.error || labels.actionFailed);
+      return;
+    }
+    setShowWalkIn(false);
+    setTab("waiting");
+    await refreshBoard();
+  }
+
+  function statusLabel(status: string) {
+    if (status === "notified") return labels.notified;
+    if (status === "seated") return labels.seated;
+    if (status === "no_show") return labels.noShow;
+    if (status === "cancelled") return labels.cancelled;
+    return labels.waiting;
+  }
+
+  const empty =
+    tab === "waiting"
+      ? labels.emptyQueue
+      : tab === "called"
+        ? labels.emptyCalled
+        : labels.emptyDone;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["waiting", labels.tabWaiting, waiting.length],
+              ["called", labels.tabCalled, called.length],
+              ["done", labels.tabDone, done.length],
+            ] as const
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              className={`btn ${tab === key ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => setTab(key)}
+            >
+              {label} ({count})
+            </button>
+          ))}
+        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setShowWalkIn(true)}>
+          {labels.addWalkIn}
+        </button>
+      </div>
+
+      {message ? <p className="text-sm text-muted">{message}</p> : null}
+
+      {rows.length === 0 ? (
+        <div className="panel text-sm text-muted">{empty}</div>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((party) => (
+            <article
+              key={party.id}
+              className="panel flex flex-wrap items-center justify-between gap-4"
+            >
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => setSelectedId(party.id)}
+              >
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="display text-2xl font-semibold tracking-tight">
+                    #{party.queueNumber}
+                  </span>
+                  <span className="badge">{statusLabel(party.status)}</span>
+                  <span className="text-xs text-muted">
+                    {party.waitMinutes}m {labels.waitMins}
+                  </span>
+                </div>
+                <div className="mt-1.5 font-medium">
+                  {party.guestName} · {party.partySize} pax
+                </div>
+                <div className="mt-0.5 text-sm text-muted">
+                  {party.phone}
+                  {party.notes ? ` · ${party.notes}` : ""}
+                </div>
+                <div className="mt-1 text-xs text-accent-dark">{labels.viewEdit}</div>
+              </button>
+              <div className="flex flex-wrap gap-2">
+                {tab === "done" ? (
+                  <button
+                    className="btn btn-secondary"
+                    disabled={pending}
+                    onClick={() => act(party.id, "restore")}
+                  >
+                    {labels.restore}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="btn btn-primary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "notify")}
+                    >
+                      {party.status === "notified" ? labels.notifyAgain : labels.notify}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "seated")}
+                    >
+                      {labels.markSeated}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "no_show")}
+                    >
+                      {labels.markNoShow}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "cancel")}
+                    >
+                      {labels.cancel}
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {selected ? (
+        <PartyDrawer
+          party={selected}
+          labels={labels}
+          onClose={() => setSelectedId(null)}
+          onSave={saveParty}
+        />
+      ) : null}
+
+      {showWalkIn ? (
+        <WalkInModal
+          labels={labels}
+          onClose={() => setShowWalkIn(false)}
+          onSubmit={addWalkIn}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PartyDrawer({
+  party,
+  labels,
+  onClose,
+  onSave,
+}: {
+  party: PartyRow;
+  labels: HostQueueLabels;
+  onClose: () => void;
+  onSave: (payload: {
+    guestName: string;
+    partySize: number;
+    phone: string;
+    notes: string;
+  }) => Promise<void>;
+}) {
+  const [guestName, setGuestName] = useState(party.guestName);
+  const [partySize, setPartySize] = useState(String(party.partySize));
+  const [phone, setPhone] = useState(party.phone);
+  const [notes, setNotes] = useState(party.notes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setGuestName(party.guestName);
+    setPartySize(String(party.partySize));
+    setPhone(party.phone);
+    setNotes(party.notes ?? "");
+  }, [party]);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await onSave({
+      guestName,
+      partySize: Number(partySize),
+      phone,
+      notes,
+    });
+    setSaving(false);
   }
 
   return (
-    <div className="space-y-3">
-      {rows.map((party) => (
-        <article
-          key={party.id}
-          className="panel flex flex-wrap items-center justify-between gap-4"
-        >
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="display text-2xl font-semibold tracking-tight">
-                #{party.queueNumber}
-              </span>
-              <span className="badge">
-                {party.status === "notified" ? labels.notified : labels.waiting}
-              </span>
-            </div>
-            <div className="mt-1.5 font-medium">
-              {party.guestName} · {party.partySize} pax
-            </div>
-            <div className="mt-0.5 text-sm text-muted">
-              {party.phone}
-              {party.notes ? ` · ${party.notes}` : ""}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="btn btn-primary"
-              disabled={pending}
-              onClick={() => act(party.id, "notify")}
-            >
-              {labels.notify}
-            </button>
-            <button
-              className="btn btn-secondary"
-              disabled={pending}
-              onClick={() => act(party.id, "seated")}
-            >
-              {labels.markSeated}
-            </button>
-            <button
-              className="btn btn-secondary"
-              disabled={pending}
-              onClick={() => act(party.id, "no_show")}
-            >
-              {labels.markNoShow}
-            </button>
-          </div>
-        </article>
-      ))}
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={onClose}>
+      <aside
+        className="panel m-0 h-full w-full max-w-md overflow-y-auto rounded-none border-0 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="display text-2xl font-semibold">#{party.queueNumber}</h2>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {labels.close}
+          </button>
+        </div>
+        <form className="space-y-3" onSubmit={onSubmit}>
+          <label className="field">
+            <span>{labels.guestName}</span>
+            <input value={guestName} onChange={(e) => setGuestName(e.target.value)} required />
+          </label>
+          <label className="field">
+            <span>{labels.partySize}</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={partySize}
+              onChange={(e) => setPartySize(e.target.value)}
+              required
+            />
+          </label>
+          <label className="field">
+            <span>{labels.phone}</span>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} required />
+          </label>
+          <label className="field">
+            <span>{labels.notes}</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </label>
+          <p className="text-xs text-muted">
+            {party.waitMinutes}m {labels.waitMins} · {party.status}
+          </p>
+          <button className="btn btn-primary w-full" disabled={saving}>
+            {saving ? "…" : labels.save}
+          </button>
+        </form>
+      </aside>
+    </div>
+  );
+}
+
+function WalkInModal({
+  labels,
+  onClose,
+  onSubmit,
+}: {
+  labels: HostQueueLabels;
+  onClose: () => void;
+  onSubmit: (payload: {
+    guestName: string;
+    partySize: number;
+    phone: string;
+    notes: string;
+  }) => Promise<void>;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    setLoading(true);
+    await onSubmit({
+      guestName: String(form.get("guestName") || ""),
+      partySize: Number(form.get("partySize") || 2),
+      phone: String(form.get("phone") || ""),
+      notes: String(form.get("notes") || ""),
+    });
+    setLoading(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="panel w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="display text-2xl font-semibold">{labels.addWalkIn}</h2>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {labels.close}
+          </button>
+        </div>
+        <form className="space-y-3" onSubmit={handleSubmit}>
+          <label className="field">
+            <span>{labels.guestName}</span>
+            <input name="guestName" required />
+          </label>
+          <label className="field">
+            <span>{labels.partySize}</span>
+            <input name="partySize" type="number" min={1} max={30} defaultValue={2} required />
+          </label>
+          <label className="field">
+            <span>{labels.phone}</span>
+            <input name="phone" required placeholder="+65…" />
+          </label>
+          <label className="field">
+            <span>{labels.notes}</span>
+            <input name="notes" />
+          </label>
+          <button className="btn btn-primary w-full" disabled={loading}>
+            {loading ? "…" : labels.addWalkIn}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

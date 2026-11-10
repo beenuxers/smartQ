@@ -43,6 +43,8 @@ export default async function PositionPage({
           tableReady: t.tableReady,
           seated: t.seated,
           noShow: t.noShow,
+          cancelled: t.cancelled,
+          queueFinished: t.queueFinished,
         }}
       />
     </main>
