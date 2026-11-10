@@ -62,6 +62,13 @@ Non-allowlisted users who hit `/admin` are redirected to `/dashboard`.
 
 Copy `.env.example` to `.env`. Set `WHATSAPP_*` to send real messages; otherwise joins/notify log to the server console. Set `ADMIN_EMAILS` for platform access.
 
+## Auth (required on Vercel)
+
+Auth.js needs these on every environment:
+
+1. `AUTH_SECRET` — long random string (`openssl rand -base64 32`). **Required**; missing secret → `/api/auth/error?error=Configuration`.
+2. `AUTH_URL` — full origin of that environment. Local: `http://localhost:3000`. Production: `https://smartq-flax.vercel.app` (or your custom domain). **Do not** set localhost on Vercel.
+
 ## Auth hardening
 
 Signup and login are rate-limited. Signup also supports **Cloudflare Turnstile**.

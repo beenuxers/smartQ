@@ -6,6 +6,8 @@ import { isPlatformAdmin } from "@/lib/admin";
  * Used by middleware; full providers live in auth.ts.
  */
 export const authConfig = {
+  // Required on Vercel / reverse proxies so Auth.js trusts the request host.
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
