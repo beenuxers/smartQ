@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
+import { isOwnerRole } from "@/lib/outlet-context";
 import { amountForPlan, simulateCardCharge } from "@/lib/payments";
 import { PLANS, type PlanId } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
@@ -24,7 +25,7 @@ const stripeSchema = z.object({
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user?.organizationId) {
+  if (!session?.user?.organizationId || !isOwnerRole(session.user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

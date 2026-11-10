@@ -67,8 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.plan = (user as { plan?: string }).plan;
       }
 
-      // Keep plan/market in sync after Stripe upgrades (Node auth path only).
+      // Keep plan/market/role in sync after upgrades & staff changes (Node auth path only).
       const organizationId = token.organizationId as string | undefined;
+      const userId = token.sub;
       if (organizationId) {
         try {
           const org = await prisma.organization.findUnique({
@@ -79,6 +80,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.plan = org.plan;
             token.country = org.country;
             token.locale = org.locale;
+          }
+          if (userId) {
+            const membership = await prisma.membership.findUnique({
+              where: {
+                userId_organizationId: {
+                  userId,
+                  organizationId,
+                },
+              },
+              select: { role: true },
+            });
+            if (membership) token.role = membership.role;
           }
         } catch (err) {
           console.error("jwt org refresh failed", err);

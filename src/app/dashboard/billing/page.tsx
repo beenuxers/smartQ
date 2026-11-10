@@ -2,14 +2,18 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
+import { isOwnerRole } from "@/lib/outlet-context";
 import { PLANS, formatMoney, WHATSAPP_OVERAGE, getPlan } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
 import { reconcilePendingStripePayments } from "@/lib/reconcile-stripe";
+import { PlanUsageBanner } from "@/components/plan-usage-banner";
+import { getMessages, resolveLocale } from "@/lib/i18n";
 import { BillingActions } from "./billing-actions";
 
 export default async function BillingPage() {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
+  if (!isOwnerRole(session.user.role)) redirect("/dashboard");
 
   if (isStripeBilling()) {
     try {
@@ -21,9 +25,14 @@ export default async function BillingPage() {
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
+    include: {
+      outlets: true,
+      memberships: true,
+    },
   });
   const currency = (org.currency as CurrencyCode) || "USD";
   const plan = getPlan(org.plan);
+  const t = getMessages(resolveLocale(org.locale));
 
   const payments = await prisma.payment.findMany({
     where: { organizationId: org.id },
@@ -34,9 +43,7 @@ export default async function BillingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-4xl display">
-          Billing
-        </h1>
+        <h1 className="text-4xl display">Billing</h1>
         <p className="mt-2 text-muted">
           Current plan <strong>{plan.name}</strong> · {org.billingCycle} · {currency}.
           {isStripeBilling()
@@ -44,6 +51,23 @@ export default async function BillingPage() {
             : " Use the test checkout to simulate payment (card 4242…)."}
         </p>
       </div>
+
+      <PlanUsageBanner
+        planId={org.plan}
+        seatingsUsed={org.seatingsUsed}
+        whatsappUsed={org.whatsappUsed}
+        outletCount={org.outlets.length}
+        staffCount={org.memberships.length}
+        labels={{
+          plan: t.plan,
+          seatingsLeft: t.seatingsLeft,
+          whatsappLeft: t.whatsappLeft,
+          outlets: t.outlets,
+          staff: t.staffSeats,
+          upgrade: t.upgrade,
+          nearLimit: t.nearLimit,
+        }}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         {(["free", "starter", "growth"] as const).map((id) => {
@@ -76,14 +100,12 @@ export default async function BillingPage() {
       </div>
 
       <div className="panel text-sm text-muted">
-        Usage this month: {org.seatingsUsed} seatings · {org.whatsappUsed} WhatsApp messages.
-        Overage after allowance: {formatMoney(WHATSAPP_OVERAGE[currency], currency)} / message.
+        Overage after WhatsApp allowance:{" "}
+        {formatMoney(WHATSAPP_OVERAGE[currency], currency)} / message.
       </div>
 
       <div className="panel overflow-x-auto">
-        <h2 className="mb-3 text-xl display">
-          Payment history
-        </h2>
+        <h2 className="mb-3 text-xl display">Payment history</h2>
         {payments.length === 0 ? (
           <p className="text-sm text-muted">
             No payments yet. Choose Starter or Growth to{" "}

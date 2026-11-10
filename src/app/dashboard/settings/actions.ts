@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { isOwnerRole } from "@/lib/outlet-context";
 import { COUNTRY_DEFAULTS, type CountryCode } from "@/lib/product";
 
 export async function updateMarketSettings(formData: FormData) {
   const session = await auth();
-  if (!session?.user?.organizationId) {
-    return { ok: false as const, error: "Unauthorized" };
+  if (!session?.user?.organizationId || !isOwnerRole(session.user.role)) {
+    return { ok: false as const, error: "Owners only" };
   }
 
   const nextLocale = String(formData.get("locale") || "en");

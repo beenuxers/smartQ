@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
+import { isOwnerRole } from "@/lib/outlet-context";
 import { amountForPlan, TEST_CARDS } from "@/lib/payments";
 import { PLANS, formatMoney } from "@/lib/pricing";
 import type { CurrencyCode, PlanId } from "@/lib/product";
@@ -15,6 +16,7 @@ export default async function CheckoutPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
+  if (!isOwnerRole(session.user.role)) redirect("/dashboard");
 
   const params = await searchParams;
   const plan: "starter" | "growth" =

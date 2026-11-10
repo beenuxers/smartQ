@@ -77,6 +77,21 @@ export type Messages = {
   notifiedCount: string;
   last7QueueDays: string;
   reportRangeNote: string;
+  team: string;
+  inviteStaff: string;
+  removeStaff: string;
+  email: string;
+  password: string;
+  staffPasswordHint: string;
+  role: string;
+  ownerRole: string;
+  staffRole: string;
+  staffSeats: string;
+  addOutlet: string;
+  outletName: string;
+  planLimitReached: string;
+  nearLimit: string;
+  staffSettingsNote: string;
 };
 
 const en: Messages = {
@@ -158,6 +173,23 @@ const en: Messages = {
   last7QueueDays: "Last 7 queue days",
   reportRangeNote:
     "Day uses your queue reset cutoff. Week and month use the calendar in the outlet timezone.",
+  team: "Team",
+  inviteStaff: "Invite staff",
+  removeStaff: "Remove",
+  email: "Email",
+  password: "Temporary password",
+  staffPasswordHint:
+    "Required for new accounts. Existing SmartQ users are added with their current password.",
+  role: "Role",
+  ownerRole: "Owner",
+  staffRole: "Staff",
+  staffSeats: "Staff seats",
+  addOutlet: "Add outlet",
+  outletName: "Outlet name",
+  planLimitReached: "Plan limit reached.",
+  nearLimit: "Near limit",
+  staffSettingsNote:
+    "Outlet hours can be edited. Team, billing, and market settings are owner-only.",
 };
 
 const ms: Messages = {
@@ -229,6 +261,23 @@ const ms: Messages = {
   notifyFailed: "Dikemas kini; WhatsApp gagal",
   actionFailed: "Tindakan gagal",
   queueFinished: "Selesai — terima kasih!",
+  team: "Pasukan",
+  inviteStaff: "Jemput staf",
+  removeStaff: "Buang",
+  email: "E-mel",
+  password: "Kata laluan sementara",
+  staffPasswordHint:
+    "Diperlukan untuk akaun baharu. Pengguna SmartQ sedia ada dikekalkan kata laluan mereka.",
+  role: "Peranan",
+  ownerRole: "Pemilik",
+  staffRole: "Staf",
+  staffSeats: "Kerusi staf",
+  addOutlet: "Tambah cawangan",
+  outletName: "Nama cawangan",
+  planLimitReached: "Had pelan dicapai.",
+  nearLimit: "Hampir had",
+  staffSettingsNote:
+    "Waktu sesi boleh diedit. Pasukan, bil, dan pasaran hanya untuk pemilik.",
 };
 
 const id: Messages = {
@@ -310,6 +359,23 @@ const id: Messages = {
   last7QueueDays: "7 hari antrean terakhir",
   reportRangeNote:
     "Hari memakai waktu reset antrean. Minggu dan bulan memakai kalender zona waktu outlet.",
+  team: "Tim",
+  inviteStaff: "Undang staf",
+  removeStaff: "Hapus",
+  email: "Email",
+  password: "Kata sandi sementara",
+  staffPasswordHint:
+    "Wajib untuk akun baru. Pengguna SmartQ yang sudah ada tetap memakai kata sandi mereka.",
+  role: "Peran",
+  ownerRole: "Pemilik",
+  staffRole: "Staf",
+  staffSeats: "Kursi staf",
+  addOutlet: "Tambah outlet",
+  outletName: "Nama outlet",
+  planLimitReached: "Batas paket tercapai.",
+  nearLimit: "Mendekati batas",
+  staffSettingsNote:
+    "Jam sesi bisa diedit. Tim, tagihan, dan pasar hanya untuk pemilik.",
 };
 
 const dictionaries: Record<LocaleCode, Messages> = { en, ms, id };

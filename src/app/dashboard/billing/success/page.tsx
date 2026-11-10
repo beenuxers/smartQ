@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
 import { fulfillPaidPayment } from "@/lib/fulfill-payment";
+import { isOwnerRole } from "@/lib/outlet-context";
 import { formatMoney, PLANS } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
 import { reconcilePendingStripePayments } from "@/lib/reconcile-stripe";
@@ -16,6 +17,7 @@ export default async function BillingSuccessPage({
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
+  if (!isOwnerRole(session.user.role)) redirect("/dashboard");
 
   const params = await searchParams;
   let paymentId = params.paymentId;

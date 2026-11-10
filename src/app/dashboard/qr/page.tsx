@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getMessages, resolveLocale } from "@/lib/i18n";
+import { getSelectedOutlet } from "@/lib/outlet-context";
 
 export default async function QrPage() {
   const session = await auth();
@@ -9,21 +10,20 @@ export default async function QrPage() {
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
-    include: { outlets: true },
+    include: { outlets: { orderBy: { createdAt: "asc" } } },
   });
-  const outlet = org.outlets[0];
+  const outlet = await getSelectedOutlet(org.outlets);
   if (!outlet) redirect("/dashboard/settings");
   const t = getMessages(resolveLocale(org.locale));
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-4xl display">
-          {t.qrCode}
-        </h1>
+        <h1 className="text-4xl display">{t.qrCode}</h1>
         <p className="mt-2 text-muted">
           Print this for your entrance. Guests scan to join via WhatsApp-ready waitlist.
         </p>
+        <p className="mt-1 text-sm text-muted">{outlet.name}</p>
       </div>
       <div className="panel text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}

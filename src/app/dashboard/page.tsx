@@ -3,8 +3,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getOutletDailyStats } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
-import { getPlan } from "@/lib/pricing";
+import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
 import { getQueueBoard, serializeParty } from "@/lib/queue";
+import { PlanUsageBanner } from "@/components/plan-usage-banner";
 import { HostWaitlist } from "./host-waitlist";
 
 export default async function DashboardPage() {
@@ -13,9 +14,12 @@ export default async function DashboardPage() {
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
-    include: { outlets: { orderBy: { createdAt: "asc" } } },
+    include: {
+      outlets: { orderBy: { createdAt: "asc" } },
+      memberships: true,
+    },
   });
-  const outlet = org.outlets[0];
+  const outlet = await getSelectedOutlet(org.outlets);
   if (!outlet) redirect("/dashboard/settings");
 
   const [board, stats] = await Promise.all([
@@ -28,30 +32,34 @@ export default async function DashboardPage() {
       queueDayCutoff: outlet.queueDayCutoff,
     }),
   ]);
-  const plan = getPlan(org.plan);
   const t = getMessages(resolveLocale(org.locale));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-[0.16em] text-muted">{t.hostDashboard}</p>
-          <h1 className="display text-3xl font-semibold tracking-tight md:text-4xl">
-            {outlet.name}
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          <span className="badge">
-            {t.plan}: {plan.name}
-          </span>
-          <span className="badge">
-            {t.seatingsLeft}: {Math.max(plan.limits.seatingsPerMonth - org.seatingsUsed, 0)}
-          </span>
-          <span className="badge">
-            {t.whatsappLeft}: {Math.max(plan.limits.whatsappPerMonth - org.whatsappUsed, 0)}
-          </span>
-        </div>
+      <div>
+        <p className="text-sm uppercase tracking-[0.16em] text-muted">{t.hostDashboard}</p>
+        <h1 className="display text-3xl font-semibold tracking-tight md:text-4xl">
+          {outlet.name}
+        </h1>
       </div>
+
+      <PlanUsageBanner
+        planId={org.plan}
+        seatingsUsed={org.seatingsUsed}
+        whatsappUsed={org.whatsappUsed}
+        outletCount={org.outlets.length}
+        staffCount={org.memberships.length}
+        showUpgrade={isOwnerRole(session.user.role)}
+        labels={{
+          plan: t.plan,
+          seatingsLeft: t.seatingsLeft,
+          whatsappLeft: t.whatsappLeft,
+          outlets: t.outlets,
+          staff: t.staffSeats,
+          upgrade: t.upgrade,
+          nearLimit: t.nearLimit,
+        }}
+      />
 
       <div className="grid gap-3 sm:grid-cols-4">
         {[

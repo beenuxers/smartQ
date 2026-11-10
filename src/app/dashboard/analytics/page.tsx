@@ -7,6 +7,7 @@ import {
   type ReportRange,
 } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
+import { getSelectedOutlet } from "@/lib/outlet-context";
 import { RangeTabs } from "./range-tabs";
 
 export default async function AnalyticsPage({
@@ -23,9 +24,9 @@ export default async function AnalyticsPage({
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
-    include: { outlets: true },
+    include: { outlets: { orderBy: { createdAt: "asc" } } },
   });
-  const outlet = org.outlets[0];
+  const outlet = await getSelectedOutlet(org.outlets);
   if (!outlet) redirect("/dashboard/settings");
 
   const t = getMessages(resolveLocale(org.locale));
@@ -56,7 +57,7 @@ export default async function AnalyticsPage({
         <div>
           <h1 className="text-4xl display">{t.analytics}</h1>
           <p className="mt-2 text-sm text-muted">
-            {stats.label} · {outlet.timezone}
+            {outlet.name} · {stats.label} · {outlet.timezone}
           </p>
         </div>
         <RangeTabs
