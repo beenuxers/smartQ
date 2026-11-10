@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { isPlatformAdmin } from "@/lib/admin";
 import { planHasFloor } from "@/lib/floor";
 import { getMessages, resolveLocale } from "@/lib/i18n";
-import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
+import { isOwnerRole, resolveDashboardOutlet } from "@/lib/outlet-context";
 import { DashboardNav } from "./dashboard-nav";
 import { OutletSwitcher } from "./outlet-switcher";
 
@@ -39,7 +39,13 @@ export default async function DashboardLayout({
   const t = getMessages(resolveLocale(locale));
   const showAdmin = isPlatformAdmin(session.user.email);
   const isOwner = isOwnerRole(session.user.role);
-  const active = await getSelectedOutlet(outlets);
+  const active =
+    session.user.organizationId && session.user.id
+      ? await resolveDashboardOutlet(outlets, {
+          id: session.user.id,
+          organizationId: session.user.organizationId,
+        })
+      : outlets[0] ?? null;
   const showFloor = planHasFloor(plan);
 
   const items: Array<{ href: string; label: string }> = [

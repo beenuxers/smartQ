@@ -7,7 +7,7 @@ import {
   type ReportRange,
 } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
-import { getSelectedOutlet } from "@/lib/outlet-context";
+import { resolveDashboardOutlet } from "@/lib/outlet-context";
 import { RangeTabs } from "./range-tabs";
 
 export default async function AnalyticsPage({
@@ -26,7 +26,10 @@ export default async function AnalyticsPage({
     where: { id: session.user.organizationId },
     include: { outlets: { orderBy: { createdAt: "asc" } } },
   });
-  const outlet = await getSelectedOutlet(org.outlets);
+  const outlet = await resolveDashboardOutlet(org.outlets, {
+    id: session.user.id,
+    organizationId: session.user.organizationId,
+  });
   if (!outlet) redirect("/dashboard/settings");
 
   const t = getMessages(resolveLocale(org.locale));

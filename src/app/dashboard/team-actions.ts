@@ -44,6 +44,41 @@ export async function setActiveOutlet(formData: FormData) {
   return { ok: true as const };
 }
 
+/** Persist preferred outlet for this user (Settings). Also switches the active cookie. */
+export async function setDefaultOutlet(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.organizationId) {
+    return { ok: false as const, error: "Unauthorized" };
+  }
+
+  const outletId = String(formData.get("outletId") || "");
+  const outlet = await prisma.outlet.findFirst({
+    where: { id: outletId, organizationId: session.user.organizationId },
+  });
+  if (!outlet) return { ok: false as const, error: "Outlet not found" };
+
+  await prisma.membership.update({
+    where: {
+      userId_organizationId: {
+        userId: session.user.id,
+        organizationId: session.user.organizationId,
+      },
+    },
+    data: { defaultOutletId: outlet.id },
+  });
+
+  const jar = await cookies();
+  jar.set(OUTLET_COOKIE, outlet.id, {
+    path: "/",
+    sameSite: "lax",
+    httpOnly: true,
+    maxAge: 60 * 60 * 24 * 365,
+  });
+
+  revalidatePath("/dashboard", "layout");
+  return { ok: true as const };
+}
+
 export async function createOutlet(formData: FormData) {
   const session = await requireOwnerOrg();
   if (!session?.user?.organizationId) {

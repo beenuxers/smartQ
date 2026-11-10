@@ -6,10 +6,11 @@ import { getMessages, resolveLocale } from "@/lib/i18n";
 import {
   canAddOutlet,
   canAddStaff,
-  getSelectedOutlet,
   isOwnerRole,
+  resolveDashboardOutlet,
 } from "@/lib/outlet-context";
 import { getPlan } from "@/lib/pricing";
+import { DefaultOutletForm } from "./default-outlet-form";
 import { SettingsForm } from "./settings-form";
 import { MarketForm } from "./market-form";
 import { TeamPanel } from "./team-panel";
@@ -29,7 +30,19 @@ export default async function SettingsPage() {
       },
     },
   });
-  const outlet = await getSelectedOutlet(org.outlets);
+  const membership = await prisma.membership.findUnique({
+    where: {
+      userId_organizationId: {
+        userId: session.user.id,
+        organizationId: session.user.organizationId,
+      },
+    },
+    select: { defaultOutletId: true },
+  });
+  const outlet = await resolveDashboardOutlet(org.outlets, {
+    id: session.user.id,
+    organizationId: session.user.organizationId,
+  });
   if (!outlet) redirect("/register");
   const t = getMessages(resolveLocale(org.locale));
   const isOwner = isOwnerRole(session.user.role);
@@ -54,6 +67,17 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-xl space-y-6">
       <h1 className="text-4xl display">{t.settings}</h1>
       <p className="text-sm text-muted">{outlet.name}</p>
+
+      <DefaultOutletForm
+        outlets={org.outlets.map((o) => ({ id: o.id, name: o.name }))}
+        defaultOutletId={membership?.defaultOutletId ?? null}
+        labels={{
+          title: t.defaultOutlet,
+          hint: t.defaultOutletHint,
+          save: t.save,
+          saved: t.saved,
+        }}
+      />
 
       <SettingsForm
         outlet={{

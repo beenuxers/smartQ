@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getMessages, resolveLocale } from "@/lib/i18n";
-import { getSelectedOutlet } from "@/lib/outlet-context";
+import { resolveDashboardOutlet } from "@/lib/outlet-context";
 
 export default async function QrPage() {
   const session = await auth();
@@ -12,7 +12,10 @@ export default async function QrPage() {
     where: { id: session.user.organizationId },
     include: { outlets: { orderBy: { createdAt: "asc" } } },
   });
-  const outlet = await getSelectedOutlet(org.outlets);
+  const outlet = await resolveDashboardOutlet(org.outlets, {
+    id: session.user.id,
+    organizationId: session.user.organizationId,
+  });
   if (!outlet) redirect("/dashboard/settings");
   const t = getMessages(resolveLocale(org.locale));
 

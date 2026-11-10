@@ -56,15 +56,18 @@ model Payment {
 }
 
 model Membership {
-  id             String       @id @default(cuid())
-  role           String       @default("owner") // owner | staff
-  userId         String
-  organizationId String
-  createdAt      DateTime     @default(now())
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  role            String       @default("owner") // owner | staff
+  userId          String
+  organizationId  String
+  /** Preferred outlet when no cookie / new device. */
+  defaultOutletId String?
+  createdAt       DateTime     @default(now())
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
+  @@index([defaultOutletId])
 }
 
 model Outlet {

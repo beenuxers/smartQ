@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getOutletDailyStats } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
 import { planHasFloor } from "@/lib/floor";
-import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
+import { isOwnerRole, resolveDashboardOutlet } from "@/lib/outlet-context";
 import { getQueueBoard, serializeParty } from "@/lib/queue";
 import { PlanUsageBanner } from "@/components/plan-usage-banner";
 import { HostWaitlist } from "./host-waitlist";
@@ -20,7 +20,10 @@ export default async function DashboardPage() {
       memberships: true,
     },
   });
-  const outlet = await getSelectedOutlet(org.outlets);
+  const outlet = await resolveDashboardOutlet(org.outlets, {
+    id: session.user.id,
+    organizationId: session.user.organizationId,
+  });
   if (!outlet) redirect("/dashboard/settings");
 
   const [board, stats] = await Promise.all([

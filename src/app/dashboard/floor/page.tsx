@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { planHasFloor, serializeTable } from "@/lib/floor";
 import { getMessages, resolveLocale } from "@/lib/i18n";
-import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
+import { isOwnerRole, resolveDashboardOutlet } from "@/lib/outlet-context";
 import { FloorBoard } from "./floor-board";
 
 export default async function FloorPage() {
@@ -24,7 +24,10 @@ export default async function FloorPage() {
     );
   }
 
-  const outlet = await getSelectedOutlet(org.outlets);
+  const outlet = await resolveDashboardOutlet(org.outlets, {
+    id: session.user.id,
+    organizationId: session.user.organizationId,
+  });
   if (!outlet) redirect("/dashboard/settings");
 
   const tables = await prisma.diningTable.findMany({

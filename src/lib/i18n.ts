@@ -32,6 +32,8 @@ export type Messages = {
   joins: string;
   pricing: string;
   outlets: string;
+  defaultOutlet: string;
+  defaultOutletHint: string;
   settings: string;
   signOut: string;
   qrCode: string;
@@ -153,6 +155,9 @@ const en: Messages = {
   joins: "Joined today",
   pricing: "Pricing",
   outlets: "Outlets",
+  defaultOutlet: "Default outlet",
+  defaultOutletHint:
+    "Used when you open the dashboard on a new device. Switching outlets in the header still works for today.",
   settings: "Settings",
   signOut: "Sign out",
   qrCode: "Guest QR",
@@ -277,6 +282,9 @@ const ms: Messages = {
   joins: "Sertai hari ini",
   pricing: "Harga",
   outlets: "Cawangan",
+  defaultOutlet: "Cawangan lalai",
+  defaultOutletHint:
+    "Digunakan bila anda buka dashboard pada peranti baharu. Penukar di header masih berfungsi untuk sesi hari ini.",
   settings: "Tetapan",
   signOut: "Log keluar",
   qrCode: "QR tetamu",
@@ -391,6 +399,9 @@ const id: Messages = {
   joins: "Gabung hari ini",
   pricing: "Harga",
   outlets: "Outlet",
+  defaultOutlet: "Outlet default",
+  defaultOutletHint:
+    "Dipakai saat Anda membuka dashboard di perangkat baru. Pengalih di header tetap berlaku untuk hari ini.",
   settings: "Pengaturan",
   signOut: "Keluar",
   qrCode: "QR tamu",
