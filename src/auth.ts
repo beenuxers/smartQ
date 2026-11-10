@@ -32,71 +32,77 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: {},
       },
       authorize: async (raw, request) => {
-        const parsed = credentialsSchema.safeParse(raw);
-        if (!parsed.success) return null;
+        // Any uncaught throw here becomes Auth.js `error=Configuration`.
+        try {
+          const parsed = credentialsSchema.safeParse(raw);
+          if (!parsed.success) return null;
 
-        const email = parsed.data.email.toLowerCase();
-        const ip = request ? clientIp(request) : "unknown";
+          const email = parsed.data.email.toLowerCase();
+          const ip = request ? clientIp(request) : "unknown";
 
-        const ipLimit = await rateLimit({
-          key: `login:ip:${ip}`,
-          limit: LOGIN_IP_LIMIT,
-          windowMs: LOGIN_IP_WINDOW_MS,
-        });
-        if (!ipLimit.ok) return null;
+          const ipLimit = await rateLimit({
+            key: `login:ip:${ip}`,
+            limit: LOGIN_IP_LIMIT,
+            windowMs: LOGIN_IP_WINDOW_MS,
+          });
+          if (!ipLimit.ok) return null;
 
-        const emailLock = await peekRateLimit({
-          key: `login:email:${email}`,
-          limit: LOGIN_EMAIL_LIMIT,
-          windowMs: LOGIN_EMAIL_WINDOW_MS,
-        });
-        if (!emailLock.ok) return null;
+          const emailLock = await peekRateLimit({
+            key: `login:email:${email}`,
+            limit: LOGIN_EMAIL_LIMIT,
+            windowMs: LOGIN_EMAIL_WINDOW_MS,
+          });
+          if (!emailLock.ok) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-          include: {
-            memberships: {
-              include: { organization: true },
-              take: 1,
+          const user = await prisma.user.findUnique({
+            where: { email },
+            include: {
+              memberships: {
+                include: { organization: true },
+                take: 1,
+              },
             },
-          },
-        });
-        if (!user) {
-          await recordFailure({
-            key: `login:email:${email}`,
-            limit: LOGIN_EMAIL_LIMIT,
-            windowMs: LOGIN_EMAIL_WINDOW_MS,
           });
+          if (!user) {
+            await recordFailure({
+              key: `login:email:${email}`,
+              limit: LOGIN_EMAIL_LIMIT,
+              windowMs: LOGIN_EMAIL_WINDOW_MS,
+            });
+            return null;
+          }
+
+          const valid = await bcrypt.compare(
+            parsed.data.password,
+            user.passwordHash,
+          );
+          if (!valid) {
+            await recordFailure({
+              key: `login:email:${email}`,
+              limit: LOGIN_EMAIL_LIMIT,
+              windowMs: LOGIN_EMAIL_WINDOW_MS,
+            });
+            return null;
+          }
+
+          await resetRateLimit(`login:email:${email}`);
+
+          const membership = user.memberships[0];
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            organizationId: membership?.organizationId,
+            role: membership?.role,
+            country: membership?.organization.country,
+            locale: membership?.organization.locale,
+            plan: membership?.organization.plan,
+            isPlatformAdmin: isPlatformAdmin(user.email),
+          };
+        } catch (err) {
+          console.error("credentials authorize failed", err);
           return null;
         }
-
-        const valid = await bcrypt.compare(
-          parsed.data.password,
-          user.passwordHash,
-        );
-        if (!valid) {
-          await recordFailure({
-            key: `login:email:${email}`,
-            limit: LOGIN_EMAIL_LIMIT,
-            windowMs: LOGIN_EMAIL_WINDOW_MS,
-          });
-          return null;
-        }
-
-        await resetRateLimit(`login:email:${email}`);
-
-        const membership = user.memberships[0];
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          organizationId: membership?.organizationId,
-          role: membership?.role,
-          country: membership?.organization.country,
-          locale: membership?.organization.locale,
-          plan: membership?.organization.plan,
-          isPlatformAdmin: isPlatformAdmin(user.email),
-        };
       },
     }),
   ],

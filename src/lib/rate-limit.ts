@@ -25,12 +25,27 @@ function hasUpstash() {
 }
 
 let redis: Redis | null = null;
+let upstashDisabled = false;
 const upstashLimiters = new Map<string, Ratelimit>();
 
+function disableUpstash(err: unknown) {
+  if (!upstashDisabled) {
+    console.error("upstash rate-limit unavailable; falling back to memory", err);
+  }
+  upstashDisabled = true;
+  redis = null;
+  upstashLimiters.clear();
+}
+
 function getRedis() {
-  if (!hasUpstash()) return null;
+  if (upstashDisabled || !hasUpstash()) return null;
   if (!redis) {
-    redis = Redis.fromEnv();
+    try {
+      redis = Redis.fromEnv();
+    } catch (err) {
+      disableUpstash(err);
+      return null;
+    }
   }
   return redis;
 }
@@ -53,6 +68,42 @@ function getUpstashLimiter(limit: number, windowMs: number) {
   return limiter;
 }
 
+function memoryLimit(opts: {
+  key: string;
+  limit: number;
+  windowMs: number;
+  consume: boolean;
+}): RateLimitResult {
+  const { key, limit, windowMs, consume } = opts;
+  const now = Date.now();
+  pruneMemory(now);
+  const entry = memory.get(key);
+
+  if (!entry || entry.resetAt <= now) {
+    if (consume) memory.set(key, { count: 1, resetAt: now + windowMs });
+    return {
+      ok: true,
+      remaining: consume ? limit - 1 : limit,
+      retryAfterSec: Math.ceil(windowMs / 1000),
+    };
+  }
+
+  if (entry.count >= limit) {
+    return {
+      ok: false,
+      remaining: 0,
+      retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+    };
+  }
+
+  if (consume) entry.count += 1;
+  return {
+    ok: true,
+    remaining: Math.max(0, limit - (consume ? entry.count : entry.count)),
+    retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+  };
+}
+
 /** Consume one attempt against the bucket. */
 export async function rateLimit(opts: {
   key: string;
@@ -62,34 +113,19 @@ export async function rateLimit(opts: {
   const { key, limit, windowMs } = opts;
   const limiter = getUpstashLimiter(limit, windowMs);
   if (limiter) {
-    const res = await limiter.limit(key);
-    return {
-      ok: res.success,
-      remaining: res.remaining,
-      retryAfterSec: Math.max(1, Math.ceil((res.reset - Date.now()) / 1000)),
-    };
+    try {
+      const res = await limiter.limit(key);
+      return {
+        ok: res.success,
+        remaining: res.remaining,
+        retryAfterSec: Math.max(1, Math.ceil((res.reset - Date.now()) / 1000)),
+      };
+    } catch (err) {
+      disableUpstash(err);
+    }
   }
 
-  const now = Date.now();
-  pruneMemory(now);
-  const entry = memory.get(key);
-  if (!entry || entry.resetAt <= now) {
-    memory.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, remaining: limit - 1, retryAfterSec: Math.ceil(windowMs / 1000) };
-  }
-  if (entry.count >= limit) {
-    return {
-      ok: false,
-      remaining: 0,
-      retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
-    };
-  }
-  entry.count += 1;
-  return {
-    ok: true,
-    remaining: Math.max(0, limit - entry.count),
-    retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
-  };
+  return memoryLimit({ key, limit, windowMs, consume: true });
 }
 
 /** Read current count without consuming (for login email lock checks). */
@@ -101,28 +137,23 @@ export async function peekRateLimit(opts: {
   const { key, limit, windowMs } = opts;
   const client = getRedis();
   if (client) {
-    // Upstash Ratelimit stores keys under prefix; peek via a parallel counter key.
-    const failKey = `smartq:rlfail:${key}`;
-    const raw = await client.get<number | string | null>(failKey);
-    const count = typeof raw === "number" ? raw : Number(raw || 0);
-    const ttl = await client.ttl(failKey);
-    return {
-      ok: count < limit,
-      remaining: Math.max(0, limit - count),
-      retryAfterSec: ttl > 0 ? ttl : Math.ceil(windowMs / 1000),
-    };
+    try {
+      // Upstash Ratelimit stores keys under prefix; peek via a parallel counter key.
+      const failKey = `smartq:rlfail:${key}`;
+      const raw = await client.get<number | string | null>(failKey);
+      const count = typeof raw === "number" ? raw : Number(raw || 0);
+      const ttl = await client.ttl(failKey);
+      return {
+        ok: count < limit,
+        remaining: Math.max(0, limit - count),
+        retryAfterSec: ttl > 0 ? ttl : Math.ceil(windowMs / 1000),
+      };
+    } catch (err) {
+      disableUpstash(err);
+    }
   }
 
-  const now = Date.now();
-  const entry = memory.get(key);
-  if (!entry || entry.resetAt <= now) {
-    return { ok: true, remaining: limit, retryAfterSec: Math.ceil(windowMs / 1000) };
-  }
-  return {
-    ok: entry.count < limit,
-    remaining: Math.max(0, limit - entry.count),
-    retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
-  };
+  return memoryLimit({ key, limit, windowMs, consume: false });
 }
 
 /** Increment failure counter (login email). Uses dedicated keys for peek/reset. */
@@ -134,17 +165,21 @@ export async function recordFailure(opts: {
   const { key, limit, windowMs } = opts;
   const client = getRedis();
   if (client) {
-    const failKey = `smartq:rlfail:${key}`;
-    const count = await client.incr(failKey);
-    if (count === 1) {
-      await client.pexpire(failKey, windowMs);
+    try {
+      const failKey = `smartq:rlfail:${key}`;
+      const count = await client.incr(failKey);
+      if (count === 1) {
+        await client.pexpire(failKey, windowMs);
+      }
+      const ttl = await client.pttl(failKey);
+      return {
+        ok: count <= limit,
+        remaining: Math.max(0, limit - count),
+        retryAfterSec: Math.max(1, Math.ceil((ttl > 0 ? ttl : windowMs) / 1000)),
+      };
+    } catch (err) {
+      disableUpstash(err);
     }
-    const ttl = await client.pttl(failKey);
-    return {
-      ok: count <= limit,
-      remaining: Math.max(0, limit - count),
-      retryAfterSec: Math.max(1, Math.ceil((ttl > 0 ? ttl : windowMs) / 1000)),
-    };
   }
 
   return rateLimit(opts);
@@ -153,8 +188,12 @@ export async function recordFailure(opts: {
 export async function resetRateLimit(key: string) {
   const client = getRedis();
   if (client) {
-    await client.del(`smartq:rlfail:${key}`);
-    return;
+    try {
+      await client.del(`smartq:rlfail:${key}`);
+      return;
+    } catch (err) {
+      disableUpstash(err);
+    }
   }
   memory.delete(key);
 }
