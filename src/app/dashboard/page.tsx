@@ -65,8 +65,10 @@ export default async function DashboardPage() {
 
       <div className="grid gap-3 sm:grid-cols-4">
         {[
+          // Joined today = QR check-ins + walk-ins for this queue day.
           [t.joins, stats.joins],
-          [t.seatings, stats.seatings],
+          // Live count still dining (not yet Finished).
+          [t.diningNow, board.dining.length],
           [t.noShows, stats.noShows],
           [t.avgWait, `${stats.avgWait}m`],
         ].map(([label, value]) => (

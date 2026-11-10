@@ -26,6 +26,7 @@ export type Messages = {
   markNoShow: string;
   analytics: string;
   seatings: string;
+  diningNow: string;
   avgWait: string;
   noShows: string;
   joins: string;
@@ -145,10 +146,11 @@ const en: Messages = {
   markSeated: "Seated",
   markNoShow: "No-show",
   analytics: "Today",
-  seatings: "Seatings",
+  seatings: "Seated today",
+  diningNow: "Dining now",
   avgWait: "Avg wait",
-  noShows: "No-shows",
-  joins: "Joins",
+  noShows: "No-shows today",
+  joins: "Joined today",
   pricing: "Pricing",
   outlets: "Outlets",
   settings: "Settings",
@@ -268,10 +270,11 @@ const ms: Messages = {
   markSeated: "Duduk",
   markNoShow: "Tidak datang",
   analytics: "Hari ini",
-  seatings: "Duduk",
+  seatings: "Duduk hari ini",
+  diningNow: "Sedang makan",
   avgWait: "Purata tunggu",
-  noShows: "Tidak datang",
-  joins: "Sertai",
+  noShows: "Tidak datang hari ini",
+  joins: "Sertai hari ini",
   pricing: "Harga",
   outlets: "Cawangan",
   settings: "Tetapan",
@@ -381,10 +384,11 @@ const id: Messages = {
   markSeated: "Duduk",
   markNoShow: "Tidak datang",
   analytics: "Hari ini",
-  seatings: "Duduk",
+  seatings: "Duduk hari ini",
+  diningNow: "Sedang makan",
   avgWait: "Rata-rata tunggu",
-  noShows: "Tidak datang",
-  joins: "Gabung",
+  noShows: "Tidak datang hari ini",
+  joins: "Gabung hari ini",
   pricing: "Harga",
   outlets: "Outlet",
   settings: "Pengaturan",

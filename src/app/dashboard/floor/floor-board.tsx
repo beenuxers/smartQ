@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState, useTransition } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type FloorTable = {
@@ -47,7 +47,7 @@ export function FloorBoard({
 }) {
   const router = useRouter();
   const [tables, setTables] = useState(initialTables);
-  const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [seatTableId, setSeatTableId] = useState<string | null>(null);
 
@@ -60,29 +60,34 @@ export function FloorBoard({
     if (!res.ok) return;
     const json = await res.json();
     setTables(json.tables);
-    startTransition(() => router.refresh());
-  }, [outletId, router]);
+  }, [outletId]);
 
   useEffect(() => {
     const id = setInterval(() => {
       void refresh();
-    }, 5000);
+    }, 8000);
     return () => clearInterval(id);
   }, [refresh]);
 
   async function runAction(tableId: string, action: "clear" | "ready") {
     setMessage("");
-    const res = await fetch(`/api/tables/${tableId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setMessage(data.error || labels.actionFailed);
-      return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/tables/${tableId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMessage(data.error || labels.actionFailed);
+        return;
+      }
+      await refresh();
+      router.refresh();
+    } finally {
+      setBusy(false);
     }
-    await refresh();
   }
 
   async function seatWalkIn(payload: {
@@ -92,18 +97,24 @@ export function FloorBoard({
   }) {
     if (!seatTableId) return;
     setMessage("");
-    const res = await fetch(`/api/tables/${seatTableId}/seat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setMessage(data.error || labels.actionFailed);
-      return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/tables/${seatTableId}/seat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(data.error || labels.actionFailed);
+        return;
+      }
+      setSeatTableId(null);
+      await refresh();
+      router.refresh();
+    } finally {
+      setBusy(false);
     }
-    setSeatTableId(null);
-    await refresh();
   }
 
   function statusLabel(status: string) {
@@ -159,7 +170,7 @@ export function FloorBoard({
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={pending}
+                  disabled={busy}
                   onClick={() => runAction(table.id, "clear")}
                 >
                   {labels.clear}
@@ -169,7 +180,7 @@ export function FloorBoard({
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={pending}
+                  disabled={busy}
                   onClick={() => runAction(table.id, "ready")}
                 >
                   {labels.ready}
@@ -179,7 +190,7 @@ export function FloorBoard({
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  disabled={pending}
+                  disabled={busy}
                   onClick={() => setSeatTableId(table.id)}
                 >
                   {labels.seatWalkIn}

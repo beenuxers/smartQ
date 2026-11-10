@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type PartyRow = {
@@ -95,7 +95,7 @@ export function HostWaitlist({
   const [called, setCalled] = useState(initialCalled);
   const [dining, setDining] = useState(initialDining);
   const [done, setDone] = useState(initialDone);
-  const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showWalkIn, setShowWalkIn] = useState(false);
@@ -117,13 +117,12 @@ export function HostWaitlist({
     [],
   );
 
+  /** Quiet poll — update list state only (no router.refresh → no button flicker). */
   const refreshBoard = useCallback(async () => {
     const res = await fetch(`/api/outlets/${outletSlug}/queue`);
     if (!res.ok) return;
-    const json = await res.json();
-    applyBoard(json);
-    startTransition(() => router.refresh());
-  }, [applyBoard, outletSlug, router]);
+    applyBoard(await res.json());
+  }, [applyBoard, outletSlug]);
 
   useEffect(() => {
     setWaiting(initialWaiting);
@@ -135,7 +134,7 @@ export function HostWaitlist({
   useEffect(() => {
     const id = setInterval(() => {
       void refreshBoard();
-    }, 5000);
+    }, 8000);
     return () => clearInterval(id);
   }, [refreshBoard]);
 
@@ -159,28 +158,35 @@ export function HostWaitlist({
     tableId?: string,
   ) {
     setMessage("");
-    const res = await fetch(`/api/parties/${id}/action`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...(tableId ? { tableId } : {}) }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setMessage(data.error || labels.actionFailed);
-      return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/parties/${id}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...(tableId ? { tableId } : {}) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(data.error || labels.actionFailed);
+        return;
+      }
+      if (action === "notify") {
+        if (data.whatsapp?.skipped) setMessage(labels.notifySkipped);
+        else if (data.whatsapp?.ok) setMessage(labels.notifyOk);
+        else setMessage(labels.notifyFailed);
+      }
+      setSeatParty(null);
+      if (action === "seated") setTab("dining");
+      else if (action === "finish" || action === "no_show" || action === "cancel") {
+        setTab("done");
+      } else if (action === "restore") setTab("waiting");
+      else if (action === "notify") setTab("called");
+      await refreshBoard();
+      // Refresh server cards (Joined today / Dining now) only after a real action.
+      router.refresh();
+    } finally {
+      setBusy(false);
     }
-    if (action === "notify") {
-      if (data.whatsapp?.skipped) setMessage(labels.notifySkipped);
-      else if (data.whatsapp?.ok) setMessage(labels.notifyOk);
-      else setMessage(labels.notifyFailed);
-    }
-    setSeatParty(null);
-    if (action === "seated") setTab("dining");
-    else if (action === "finish" || action === "no_show" || action === "cancel") {
-      setTab("done");
-    } else if (action === "restore") setTab("waiting");
-    else if (action === "notify") setTab("called");
-    await refreshBoard();
   }
 
   /** Optional: seat onto a free table (Starter+ with tables configured). */
@@ -253,6 +259,7 @@ export function HostWaitlist({
     setShowWalkIn(false);
     setTab("waiting");
     await refreshBoard();
+    router.refresh();
   }
 
   function statusLabel(status: string, completedAt?: string | null) {
@@ -342,7 +349,7 @@ export function HostWaitlist({
                 {tab === "done" ? (
                   <button
                     className="btn btn-secondary"
-                    disabled={pending}
+                    disabled={busy}
                     onClick={() => act(party.id, "restore")}
                   >
                     {labels.restore}
@@ -351,14 +358,14 @@ export function HostWaitlist({
                   <>
                     <button
                       className="btn btn-primary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "finish")}
                     >
                       {labels.finishDining}
                     </button>
                     <button
                       className="btn btn-secondary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "restore")}
                     >
                       {labels.restore}
@@ -368,14 +375,14 @@ export function HostWaitlist({
                   <>
                     <button
                       className="btn btn-primary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "notify")}
                     >
                       {party.status === "notified" ? labels.notifyAgain : labels.notify}
                     </button>
                     <button
                       className="btn btn-secondary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "seated")}
                     >
                       {labels.markSeated}
@@ -383,7 +390,7 @@ export function HostWaitlist({
                     {floorEnabled ? (
                       <button
                         className="btn btn-secondary"
-                        disabled={pending}
+                        disabled={busy}
                         onClick={() => openSeatPicker(party)}
                       >
                         {labels.seatToTable}
@@ -391,14 +398,14 @@ export function HostWaitlist({
                     ) : null}
                     <button
                       className="btn btn-secondary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "no_show")}
                     >
                       {labels.markNoShow}
                     </button>
                     <button
                       className="btn btn-secondary"
-                      disabled={pending}
+                      disabled={busy}
                       onClick={() => act(party.id, "cancel")}
                     >
                       {labels.cancel}
@@ -416,7 +423,7 @@ export function HostWaitlist({
           party={selected}
           labels={labels}
           floorEnabled={floorEnabled}
-          pending={pending}
+          pending={busy}
           onClose={() => setSelectedId(null)}
           onSave={saveParty}
           onAction={async (action) => {
