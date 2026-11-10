@@ -105,13 +105,13 @@ export async function POST(
       return NextResponse.json(updated);
     }
 
-    // Seat without table — finish immediately (Free / skip picker).
+    // Seat without table — still dining until host taps Finish.
     const updated = await prisma.party.update({
       where: { id },
       data: {
         status: "seated",
         seatedAt: now,
-        completedAt: now,
+        completedAt: null,
       },
     });
     return NextResponse.json(updated);

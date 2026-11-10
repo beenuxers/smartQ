@@ -174,6 +174,11 @@ export function HostWaitlist({
       else setMessage(labels.notifyFailed);
     }
     setSeatParty(null);
+    if (action === "seated") setTab("dining");
+    else if (action === "finish" || action === "no_show" || action === "cancel") {
+      setTab("done");
+    } else if (action === "restore") setTab("waiting");
+    else if (action === "notify") setTab("called");
     await refreshBoard();
   }
 
@@ -269,11 +274,9 @@ export function HostWaitlist({
   const tabs: Array<[Tab, string, number]> = [
     ["waiting", labels.tabWaiting, waiting.length],
     ["called", labels.tabCalled, called.length],
+    ["dining", labels.tabDining, dining.length],
+    ["done", labels.tabDone, done.length],
   ];
-  if (floorEnabled || dining.length > 0) {
-    tabs.push(["dining", labels.tabDining, dining.length]);
-  }
-  tabs.push(["done", labels.tabDone, done.length]);
 
   return (
     <div className="space-y-4">
