@@ -406,8 +406,19 @@ export function HostWaitlist({
         <PartyDrawer
           party={selected}
           labels={labels}
+          floorEnabled={floorEnabled}
+          pending={pending}
           onClose={() => setSelectedId(null)}
           onSave={saveParty}
+          onAction={async (action) => {
+            if (action === "seat_table") {
+              setSelectedId(null);
+              await openSeatPicker(selected);
+              return;
+            }
+            await act(selected.id, action);
+            setSelectedId(null);
+          }}
         />
       ) : null}
 
@@ -532,14 +543,28 @@ function TablePickerModal({
   );
 }
 
+type PartyDrawerAction =
+  | "notify"
+  | "seated"
+  | "no_show"
+  | "cancel"
+  | "restore"
+  | "finish"
+  | "seat_table";
+
 function PartyDrawer({
   party,
   labels,
+  floorEnabled,
+  pending,
   onClose,
   onSave,
+  onAction,
 }: {
   party: PartyRow;
   labels: HostQueueLabels;
+  floorEnabled: boolean;
+  pending: boolean;
   onClose: () => void;
   onSave: (payload: {
     guestName: string;
@@ -547,12 +572,21 @@ function PartyDrawer({
     phone: string;
     notes: string;
   }) => Promise<void>;
+  onAction: (action: PartyDrawerAction) => Promise<void>;
 }) {
   const [guestName, setGuestName] = useState(party.guestName);
   const [partySize, setPartySize] = useState(String(party.partySize));
   const [phone, setPhone] = useState(party.phone);
   const [notes, setNotes] = useState(party.notes ?? "");
   const [saving, setSaving] = useState(false);
+  const [acting, setActing] = useState(false);
+
+  const isDining = party.status === "seated" && !party.completedAt;
+  const isDone =
+    party.status === "no_show" ||
+    party.status === "cancelled" ||
+    (party.status === "seated" && Boolean(party.completedAt));
+  const isQueue = party.status === "waiting" || party.status === "notified";
 
   useEffect(() => {
     setGuestName(party.guestName);
@@ -573,6 +607,14 @@ function PartyDrawer({
     setSaving(false);
   }
 
+  async function runAction(action: PartyDrawerAction) {
+    setActing(true);
+    await onAction(action);
+    setActing(false);
+  }
+
+  const busy = saving || acting || pending;
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={onClose}>
       <aside
@@ -585,6 +627,100 @@ function PartyDrawer({
             {labels.close}
           </button>
         </div>
+
+        <div className="mb-5 space-y-2 border-b border-line pb-5">
+          <p className="text-xs uppercase tracking-wide text-muted">Status</p>
+          <p className="text-sm text-muted">
+            {party.waitMinutes}m {labels.waitMins} · {party.status}
+          </p>
+          <div className="flex flex-col gap-2">
+            {isQueue ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("notify")}
+                >
+                  {party.status === "notified" ? labels.notifyAgain : labels.notify}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("seated")}
+                >
+                  {labels.markSeated}
+                </button>
+                {floorEnabled ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary w-full"
+                    disabled={busy}
+                    onClick={() => runAction("seat_table")}
+                  >
+                    {labels.seatToTable}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("no_show")}
+                >
+                  {labels.markNoShow}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("cancel")}
+                >
+                  {labels.cancel}
+                </button>
+              </>
+            ) : null}
+            {isDining ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("finish")}
+                >
+                  {labels.finishDining}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("restore")}
+                >
+                  {labels.restore}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary w-full"
+                  disabled={busy}
+                  onClick={() => runAction("cancel")}
+                >
+                  {labels.cancel}
+                </button>
+              </>
+            ) : null}
+            {isDone ? (
+              <button
+                type="button"
+                className="btn btn-secondary w-full"
+                disabled={busy}
+                onClick={() => runAction("restore")}
+              >
+                {labels.restore}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         <form className="space-y-3" onSubmit={onSubmit}>
           <label className="field">
             <span>{labels.guestName}</span>
@@ -613,10 +749,7 @@ function PartyDrawer({
               rows={3}
             />
           </label>
-          <p className="text-xs text-muted">
-            {party.waitMinutes}m {labels.waitMins} · {party.status}
-          </p>
-          <button className="btn btn-primary w-full" disabled={saving}>
+          <button className="btn btn-primary w-full" disabled={busy}>
             {saving ? "…" : labels.save}
           </button>
         </form>

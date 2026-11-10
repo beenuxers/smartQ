@@ -150,18 +150,27 @@ export async function POST(
     return NextResponse.json(updated);
   }
 
-  if (body.action === "no_show") {
-    const updated = await prisma.party.update({
-      where: { id },
-      data: { status: "no_show", completedAt: new Date() },
-    });
-    return NextResponse.json(updated);
-  }
-
-  if (body.action === "cancel") {
-    const updated = await prisma.party.update({
-      where: { id },
-      data: { status: "cancelled", completedAt: new Date() },
+  if (body.action === "no_show" || body.action === "cancel") {
+    const now = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      if (party.diningTable) {
+        await tx.diningTable.update({
+          where: { id: party.diningTable.id },
+          data: {
+            status: "dirty",
+            partyId: null,
+            clearedAt: now,
+            seatedAt: null,
+          },
+        });
+      }
+      return tx.party.update({
+        where: { id },
+        data: {
+          status: body.action === "no_show" ? "no_show" : "cancelled",
+          completedAt: now,
+        },
+      });
     });
     return NextResponse.json(updated);
   }
