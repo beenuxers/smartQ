@@ -92,6 +92,25 @@ export type Messages = {
   planLimitReached: string;
   nearLimit: string;
   staffSettingsNote: string;
+  floor: string;
+  tableFree: string;
+  tableOccupied: string;
+  tableDirty: string;
+  clearTable: string;
+  markReady: string;
+  seatWalkIn: string;
+  tableSeats: string;
+  emptyFloor: string;
+  manageTables: string;
+  assignTable: string;
+  seatWithoutTable: string;
+  preferredFit: string;
+  tablesTitle: string;
+  addTable: string;
+  tableName: string;
+  floorUpgradeHint: string;
+  floorIncluded: string;
+  floorBillingNote: string;
 };
 
 const en: Messages = {
@@ -190,6 +209,25 @@ const en: Messages = {
   nearLimit: "Near limit",
   staffSettingsNote:
     "Outlet hours can be edited. Team, billing, and market settings are owner-only.",
+  floor: "Floor",
+  tableFree: "Free",
+  tableOccupied: "Occupied",
+  tableDirty: "Dirty",
+  clearTable: "Clear",
+  markReady: "Ready",
+  seatWalkIn: "Seat walk-in",
+  tableSeats: "Seats",
+  emptyFloor: "No tables yet — add them in Settings.",
+  manageTables: "Manage tables",
+  assignTable: "Assign table",
+  seatWithoutTable: "Seat without table",
+  preferredFit: "Best fit",
+  tablesTitle: "Tables",
+  addTable: "Add table",
+  tableName: "Table name",
+  floorUpgradeHint: "Table floor is included on Starter and Growth.",
+  floorIncluded: "Table floor included",
+  floorBillingNote: "Upgrade to Starter or Growth to unlock the table floor.",
 };
 
 const ms: Messages = {
@@ -278,6 +316,25 @@ const ms: Messages = {
   nearLimit: "Hampir had",
   staffSettingsNote:
     "Waktu sesi boleh diedit. Pasukan, bil, dan pasaran hanya untuk pemilik.",
+  floor: "Lantai",
+  tableFree: "Kosong",
+  tableOccupied: "Diduduki",
+  tableDirty: "Kotor",
+  clearTable: "Kosongkan",
+  markReady: "Sedia",
+  seatWalkIn: "Duduk walk-in",
+  tableSeats: "Tempat duduk",
+  emptyFloor: "Belum ada meja — tambah dalam Tetapan.",
+  manageTables: "Urus meja",
+  assignTable: "Tugaskan meja",
+  seatWithoutTable: "Duduk tanpa meja",
+  preferredFit: "Paling sesuai",
+  tablesTitle: "Meja",
+  addTable: "Tambah meja",
+  tableName: "Nama meja",
+  floorUpgradeHint: "Lantai meja disertakan pada Starter dan Growth.",
+  floorIncluded: "Lantai meja disertakan",
+  floorBillingNote: "Naik taraf ke Starter atau Growth untuk lantai meja.",
 };
 
 const id: Messages = {
@@ -376,6 +433,25 @@ const id: Messages = {
   nearLimit: "Mendekati batas",
   staffSettingsNote:
     "Jam sesi bisa diedit. Tim, tagihan, dan pasar hanya untuk pemilik.",
+  floor: "Lantai",
+  tableFree: "Kosong",
+  tableOccupied: "Terisi",
+  tableDirty: "Kotor",
+  clearTable: "Kosongkan",
+  markReady: "Siap",
+  seatWalkIn: "Duduk walk-in",
+  tableSeats: "Kursi",
+  emptyFloor: "Belum ada meja — tambah di Pengaturan.",
+  manageTables: "Kelola meja",
+  assignTable: "Tugaskan meja",
+  seatWithoutTable: "Duduk tanpa meja",
+  preferredFit: "Paling cocok",
+  tablesTitle: "Meja",
+  addTable: "Tambah meja",
+  tableName: "Nama meja",
+  floorUpgradeHint: "Lantai meja termasuk di Starter dan Growth.",
+  floorIncluded: "Lantai meja termasuk",
+  floorBillingNote: "Upgrade ke Starter atau Growth untuk lantai meja.",
 };
 
 const dictionaries: Record<LocaleCode, Messages> = { en, ms, id };

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getOutletDailyStats } from "@/lib/analytics";
 import { getMessages, resolveLocale } from "@/lib/i18n";
+import { planHasFloor } from "@/lib/floor";
 import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
 import { getQueueBoard, serializeParty } from "@/lib/queue";
 import { PlanUsageBanner } from "@/components/plan-usage-banner";
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
     }),
   ]);
   const t = getMessages(resolveLocale(org.locale));
+  const floorEnabled = planHasFloor(org.plan);
 
   return (
     <div className="space-y-6">
@@ -83,6 +85,7 @@ export default async function DashboardPage() {
         initialWaiting={board.waiting.map(serializeParty)}
         initialCalled={board.called.map(serializeParty)}
         initialDone={board.doneToday.map(serializeParty)}
+        floorEnabled={floorEnabled}
         labels={{
           notify: t.notify,
           notifyAgain: t.notifyAgain,
@@ -114,6 +117,10 @@ export default async function DashboardPage() {
           notifySkipped: t.notifySkipped,
           notifyFailed: t.notifyFailed,
           actionFailed: t.actionFailed,
+          assignTable: t.assignTable,
+          seatWithoutTable: t.seatWithoutTable,
+          tableSeats: t.tableSeats,
+          preferredFit: t.preferredFit,
         }}
       />
     </div>

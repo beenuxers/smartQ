@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { planHasFloor } from "@/lib/floor";
 import { getMessages, resolveLocale } from "@/lib/i18n";
 import {
   canAddOutlet,
@@ -12,6 +13,7 @@ import { getPlan } from "@/lib/pricing";
 import { SettingsForm } from "./settings-form";
 import { MarketForm } from "./market-form";
 import { TeamPanel } from "./team-panel";
+import { TablesPanel } from "./tables-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -32,6 +34,21 @@ export default async function SettingsPage() {
   const t = getMessages(resolveLocale(org.locale));
   const isOwner = isOwnerRole(session.user.role);
   const plan = getPlan(org.plan);
+  const floorEnabled = planHasFloor(org.plan);
+
+  const tables = floorEnabled
+    ? await prisma.diningTable.findMany({
+        where: { outletId: outlet.id },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          seats: true,
+          status: true,
+          sortOrder: true,
+        },
+      })
+    : [];
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -57,6 +74,26 @@ export default async function SettingsPage() {
           allDay: t.allDay,
           queueDayCutoff: t.queueDayCutoff,
           queueDayCutoffHint: t.queueDayCutoffHint,
+        }}
+      />
+
+      <TablesPanel
+        outletId={outlet.id}
+        initialTables={tables}
+        floorEnabled={floorEnabled}
+        labels={{
+          title: t.tablesTitle,
+          add: t.addTable,
+          name: t.tableName,
+          seats: t.tableSeats,
+          save: t.save,
+          remove: t.removeStaff,
+          upgrade: t.upgrade,
+          upgradeHint: t.floorUpgradeHint,
+          free: t.tableFree,
+          occupied: t.tableOccupied,
+          dirty: t.tableDirty,
+          actionFailed: t.actionFailed,
         }}
       />
 

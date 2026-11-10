@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireOrgAccess } from "@/lib/access";
 import { prisma } from "@/lib/db";
+import { planHasFloor } from "@/lib/floor";
 import { canSendWhatsApp, recordWhatsApp } from "@/lib/usage";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 const schema = z.object({
   action: z.enum(["notify", "seated", "no_show", "cancel", "restore"]),
+  tableId: z.string().min(1).optional(),
 });
 
 export async function POST(
@@ -18,7 +20,10 @@ export async function POST(
 
   const party = await prisma.party.findUnique({
     where: { id },
-    include: { outlet: true },
+    include: {
+      outlet: { include: { organization: { select: { plan: true } } } },
+      diningTable: true,
+    },
   });
 
   if (!party) {
@@ -57,12 +62,56 @@ export async function POST(
   }
 
   if (body.action === "seated") {
+    const now = new Date();
+
+    if (body.tableId) {
+      if (!planHasFloor(party.outlet.organization.plan)) {
+        return NextResponse.json(
+          { error: "Table floor requires Starter or Growth" },
+          { status: 403 },
+        );
+      }
+
+      const table = await prisma.diningTable.findFirst({
+        where: { id: body.tableId, outletId: party.outletId },
+      });
+      if (!table) {
+        return NextResponse.json({ error: "Table not found" }, { status: 404 });
+      }
+      if (table.status !== "free") {
+        return NextResponse.json({ error: "Table is not free" }, { status: 400 });
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        const p = await tx.party.update({
+          where: { id },
+          data: {
+            status: "seated",
+            seatedAt: now,
+            completedAt: null,
+          },
+        });
+        await tx.diningTable.update({
+          where: { id: table.id },
+          data: {
+            status: "occupied",
+            partyId: p.id,
+            seatedAt: now,
+            clearedAt: null,
+          },
+        });
+        return p;
+      });
+      return NextResponse.json(updated);
+    }
+
+    // Seat without table — finish immediately (Free / skip picker).
     const updated = await prisma.party.update({
       where: { id },
       data: {
         status: "seated",
-        seatedAt: new Date(),
-        completedAt: new Date(),
+        seatedAt: now,
+        completedAt: now,
       },
     });
     return NextResponse.json(updated);
@@ -84,7 +133,19 @@ export async function POST(
     return NextResponse.json(updated);
   }
 
-  // restore → back to waiting
+  // restore → back to waiting; release table if still linked
+  if (party.diningTable) {
+    await prisma.diningTable.update({
+      where: { id: party.diningTable.id },
+      data: {
+        status: "free",
+        partyId: null,
+        seatedAt: null,
+        clearedAt: null,
+      },
+    });
+  }
+
   const updated = await prisma.party.update({
     where: { id },
     data: {

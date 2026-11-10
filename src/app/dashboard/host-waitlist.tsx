@@ -52,6 +52,16 @@ export type HostQueueLabels = {
   notifySkipped: string;
   notifyFailed: string;
   actionFailed: string;
+  assignTable: string;
+  seatWithoutTable: string;
+  tableSeats: string;
+  preferredFit: string;
+};
+
+type FreeTableOption = {
+  id: string;
+  name: string;
+  seats: number;
 };
 
 export function HostWaitlist({
@@ -60,6 +70,7 @@ export function HostWaitlist({
   initialWaiting,
   initialCalled,
   initialDone,
+  floorEnabled = false,
   labels,
 }: {
   outletId: string;
@@ -67,6 +78,7 @@ export function HostWaitlist({
   initialWaiting: PartyRow[];
   initialCalled: PartyRow[];
   initialDone: PartyRow[];
+  floorEnabled?: boolean;
   labels: HostQueueLabels;
 }) {
   const router = useRouter();
@@ -78,6 +90,8 @@ export function HostWaitlist({
   const [message, setMessage] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showWalkIn, setShowWalkIn] = useState(false);
+  const [seatParty, setSeatParty] = useState<PartyRow | null>(null);
+  const [freeTables, setFreeTables] = useState<FreeTableOption[]>([]);
 
   const applyBoard = useCallback(
     (board: { waiting: PartyRow[]; called: PartyRow[]; doneToday: PartyRow[] }) => {
@@ -119,12 +133,13 @@ export function HostWaitlist({
   async function act(
     id: string,
     action: "notify" | "seated" | "no_show" | "cancel" | "restore",
+    tableId?: string,
   ) {
     setMessage("");
     const res = await fetch(`/api/parties/${id}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, ...(tableId ? { tableId } : {}) }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -136,7 +151,30 @@ export function HostWaitlist({
       else if (data.whatsapp?.ok) setMessage(labels.notifyOk);
       else setMessage(labels.notifyFailed);
     }
+    setSeatParty(null);
     await refreshBoard();
+  }
+
+  async function openSeatPicker(party: PartyRow) {
+    if (!floorEnabled) {
+      await act(party.id, "seated");
+      return;
+    }
+    const res = await fetch(`/api/tables?outletId=${outletId}`);
+    if (!res.ok) {
+      await act(party.id, "seated");
+      return;
+    }
+    const json = await res.json();
+    const free = (json.tables as Array<{ id: string; name: string; seats: number; status: string }>)
+      .filter((t) => t.status === "free")
+      .map((t) => ({ id: t.id, name: t.name, seats: t.seats }));
+    if (free.length === 0) {
+      await act(party.id, "seated");
+      return;
+    }
+    setFreeTables(free);
+    setSeatParty(party);
   }
 
   async function saveParty(payload: {
@@ -288,7 +326,7 @@ export function HostWaitlist({
                     <button
                       className="btn btn-secondary"
                       disabled={pending}
-                      onClick={() => act(party.id, "seated")}
+                      onClick={() => openSeatPicker(party)}
                     >
                       {labels.markSeated}
                     </button>
@@ -330,6 +368,116 @@ export function HostWaitlist({
           onSubmit={addWalkIn}
         />
       ) : null}
+
+      {seatParty ? (
+        <TablePickerModal
+          party={seatParty}
+          tables={freeTables}
+          labels={labels}
+          onClose={() => setSeatParty(null)}
+          onPick={(tableId) => act(seatParty.id, "seated", tableId)}
+          onSkip={() => act(seatParty.id, "seated")}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TablePickerModal({
+  party,
+  tables,
+  labels,
+  onClose,
+  onPick,
+  onSkip,
+}: {
+  party: PartyRow;
+  tables: FreeTableOption[];
+  labels: HostQueueLabels;
+  onClose: () => void;
+  onPick: (tableId: string) => Promise<void>;
+  onSkip: () => Promise<void>;
+}) {
+  const preferred = tables.filter((t) => t.seats >= party.partySize);
+  const others = tables.filter((t) => t.seats < party.partySize);
+  const [busy, setBusy] = useState(false);
+
+  async function pick(id: string) {
+    setBusy(true);
+    await onPick(id);
+    setBusy(false);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div className="panel w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="display text-2xl font-semibold">{labels.assignTable}</h2>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {labels.close}
+          </button>
+        </div>
+        <p className="text-sm text-muted">
+          #{party.queueNumber} · {party.guestName} · {party.partySize} pax
+        </p>
+
+        {preferred.length > 0 ? (
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-wide text-muted">
+              {labels.preferredFit}
+            </div>
+            {preferred.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="btn btn-primary w-full justify-between"
+                disabled={busy}
+                onClick={() => pick(t.id)}
+              >
+                <span>{t.name}</span>
+                <span className="text-sm opacity-80">
+                  {labels.tableSeats}: {t.seats}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {others.length > 0 ? (
+          <div className="space-y-2">
+            {others.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="btn btn-secondary w-full justify-between"
+                disabled={busy}
+                onClick={() => pick(t.id)}
+              >
+                <span>{t.name}</span>
+                <span className="text-sm opacity-80">
+                  {labels.tableSeats}: {t.seats}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className="btn btn-secondary w-full"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await onSkip();
+            setBusy(false);
+          }}
+        >
+          {labels.seatWithoutTable}
+        </button>
+      </div>
     </div>
   );
 }

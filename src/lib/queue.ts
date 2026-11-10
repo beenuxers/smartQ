@@ -68,14 +68,22 @@ export async function getQueueBoard(
       where: { outletId, status: "notified" },
       orderBy: { queueNumber: "asc" },
     }),
+    // Done = finished parties only (dining with completedAt null stay on Floor).
     prisma.party.findMany({
       where: {
         outletId,
-        status: { in: ["seated", "no_show", "cancelled"] },
         OR: [
-          { completedAt: { gte: dayStart, lt: dayEnd } },
-          { seatedAt: { gte: dayStart, lt: dayEnd } },
-          { joinedAt: { gte: dayStart, lt: dayEnd } },
+          {
+            status: { in: ["no_show", "cancelled"] },
+            OR: [
+              { completedAt: { gte: dayStart, lt: dayEnd } },
+              { joinedAt: { gte: dayStart, lt: dayEnd } },
+            ],
+          },
+          {
+            status: "seated",
+            completedAt: { gte: dayStart, lt: dayEnd },
+          },
         ],
       },
       orderBy: [{ completedAt: "desc" }, { joinedAt: "desc" }],

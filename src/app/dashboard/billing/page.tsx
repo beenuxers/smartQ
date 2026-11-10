@@ -10,7 +10,11 @@ import { PlanUsageBanner } from "@/components/plan-usage-banner";
 import { getMessages, resolveLocale } from "@/lib/i18n";
 import { BillingActions } from "./billing-actions";
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ feature?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
   if (!isOwnerRole(session.user.role)) redirect("/dashboard");
@@ -23,6 +27,7 @@ export default async function BillingPage() {
     }
   }
 
+  const params = await searchParams;
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
     include: {
@@ -50,6 +55,9 @@ export default async function BillingPage() {
             ? " Paid upgrades go through Stripe Checkout."
             : " Use the test checkout to simulate payment (card 4242…)."}
         </p>
+        {params.feature === "floor" && org.plan === "free" ? (
+          <p className="mt-2 text-sm text-accent">{t.floorBillingNote}</p>
+        ) : null}
       </div>
 
       <PlanUsageBanner
@@ -92,6 +100,9 @@ export default async function BillingPage() {
                 <li>
                   {p.limits.outlets} outlet(s) · {p.limits.staffSeats} seats
                 </li>
+                {id === "starter" || id === "growth" ? (
+                  <li>{t.floorIncluded}</li>
+                ) : null}
               </ul>
               <BillingActions plan={id} active={active} />
             </article>

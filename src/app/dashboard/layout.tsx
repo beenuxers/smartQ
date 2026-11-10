@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isPlatformAdmin } from "@/lib/admin";
+import { planHasFloor } from "@/lib/floor";
 import { getMessages, resolveLocale } from "@/lib/i18n";
 import { getSelectedOutlet, isOwnerRole } from "@/lib/outlet-context";
 import { OutletSwitcher } from "./outlet-switcher";
@@ -16,6 +17,7 @@ export default async function DashboardLayout({
   if (!session?.user) redirect("/login");
 
   let locale = session.user.locale || "en";
+  let plan = session.user.plan || "free";
   let outlets: Array<{ id: string; name: string; slug: string; isActive: boolean }> =
     [];
   if (session.user.organizationId) {
@@ -23,6 +25,7 @@ export default async function DashboardLayout({
       where: { id: session.user.organizationId },
       select: {
         locale: true,
+        plan: true,
         outlets: {
           orderBy: { createdAt: "asc" },
           select: { id: true, name: true, slug: true, isActive: true },
@@ -30,19 +33,24 @@ export default async function DashboardLayout({
       },
     });
     if (org?.locale) locale = org.locale;
+    if (org?.plan) plan = org.plan;
     outlets = org?.outlets ?? [];
   }
   const t = getMessages(resolveLocale(locale));
   const showAdmin = isPlatformAdmin(session.user.email);
   const isOwner = isOwnerRole(session.user.role);
   const active = await getSelectedOutlet(outlets);
+  const showFloor = planHasFloor(plan);
 
   const nav: Array<[string, string]> = [
     ["/dashboard", t.waitlist],
+  ];
+  if (showFloor) nav.push(["/dashboard/floor", t.floor]);
+  nav.push(
     ["/dashboard/qr", "QR"],
     ["/dashboard/analytics", t.analytics],
     ["/dashboard/settings", t.settings],
-  ];
+  );
   if (isOwner) nav.push(["/dashboard/billing", t.billing]);
 
   return (

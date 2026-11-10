@@ -85,24 +85,45 @@ model Outlet {
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   parties        Party[]
+  tables         DiningTable[]
+}
+
+model DiningTable {
+  id        String    @id @default(cuid())
+  outletId  String
+  name      String
+  seats     Int       @default(2)
+  status    String    @default("free") // free | occupied | dirty
+  sortOrder Int       @default(0)
+  partyId   String?   @unique
+  seatedAt  DateTime?
+  clearedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  outlet    Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  party     Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
+
+  @@index([outletId, sortOrder])
+  @@index([outletId, status])
 }
 
 model Party {
-  id           String    @id @default(cuid())
-  token        String    @unique
+  id           String       @id @default(cuid())
+  token        String       @unique
   queueNumber  Int
   guestName    String
   partySize    Int
   phone        String
   notes        String?
-  status       String    @default("waiting") // waiting | notified | seated | no_show | cancelled
+  status       String       @default("waiting") // waiting | notified | seated | no_show | cancelled
   positionLink String
-  joinedAt     DateTime  @default(now())
+  joinedAt     DateTime     @default(now())
   notifiedAt   DateTime?
   seatedAt     DateTime?
   completedAt  DateTime?
   outletId     String
-  outlet       Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  outlet       Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  diningTable  DiningTable?
 
   @@index([outletId, status])
   @@index([outletId, joinedAt])

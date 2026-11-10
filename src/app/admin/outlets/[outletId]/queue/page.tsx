@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HostWaitlist } from "@/app/dashboard/host-waitlist";
+import { planHasFloor } from "@/lib/floor";
 import { prisma } from "@/lib/db";
 import { getQueueBoard, serializeParty } from "@/lib/queue";
 
@@ -35,6 +36,10 @@ const labels = {
   notifySkipped: "Notified (WhatsApp quota skipped)",
   notifyFailed: "Queue updated; WhatsApp failed",
   actionFailed: "Action failed",
+  assignTable: "Assign table",
+  seatWithoutTable: "Seat without table",
+  tableSeats: "Seats",
+  preferredFit: "Best fit",
 };
 
 export default async function AdminOutletQueuePage({
@@ -83,6 +88,7 @@ export default async function AdminOutletQueuePage({
         initialWaiting={board.waiting.map(serializeParty)}
         initialCalled={board.called.map(serializeParty)}
         initialDone={board.doneToday.map(serializeParty)}
+        floorEnabled={planHasFloor(outlet.organization.plan)}
         labels={labels}
       />
     </div>
