@@ -20,6 +20,7 @@ export async function GET(
     outletId: outlet.id,
     waiting: board.waiting.map(serializeParty),
     called: board.called.map(serializeParty),
+    dining: board.dining.map(serializeParty),
     doneToday: board.doneToday.map(serializeParty),
   });
 }

@@ -56,9 +56,14 @@ export type Messages = {
   cancelled: string;
   tabWaiting: string;
   tabCalled: string;
+  tabDining: string;
   tabDone: string;
   emptyCalled: string;
+  emptyDining: string;
   emptyDone: string;
+  seatToTable: string;
+  finishDining: string;
+  noFreeTables: string;
   waitMins: string;
   addWalkIn: string;
   viewEdit: string;
@@ -170,9 +175,14 @@ const en: Messages = {
   cancelled: "Cancelled",
   tabWaiting: "Waiting",
   tabCalled: "Called",
+  tabDining: "Dining",
   tabDone: "Done today",
   emptyCalled: "No parties called",
+  emptyDining: "No parties dining",
   emptyDone: "No completed parties today",
+  seatToTable: "Seat to table",
+  finishDining: "Finish dining",
+  noFreeTables: "No free tables — add tables in Settings, or use Seated.",
   waitMins: "wait",
   addWalkIn: "Add walk-in",
   viewEdit: "View / edit",
@@ -287,9 +297,14 @@ const ms: Messages = {
   cancelled: "Dibatalkan",
   tabWaiting: "Menunggu",
   tabCalled: "Dipanggil",
+  tabDining: "Sedang makan",
   tabDone: "Selesai hari ini",
   emptyCalled: "Tiada tetamu dipanggil",
+  emptyDining: "Tiada tetamu sedang makan",
   emptyDone: "Tiada tetamu selesai hari ini",
+  seatToTable: "Duduk ke meja",
+  finishDining: "Tamat makan",
+  noFreeTables: "Tiada meja kosong — tambah meja dalam Tetapan, atau guna Duduk.",
   waitMins: "tunggu",
   addWalkIn: "Tambah walk-in",
   viewEdit: "Lihat / edit",
@@ -394,9 +409,14 @@ const id: Messages = {
   cancelled: "Dibatalkan",
   tabWaiting: "Menunggu",
   tabCalled: "Dipanggil",
+  tabDining: "Sedang makan",
   tabDone: "Selesai hari ini",
   emptyCalled: "Tidak ada tamu dipanggil",
+  emptyDining: "Tidak ada tamu sedang makan",
   emptyDone: "Tidak ada tamu selesai hari ini",
+  seatToTable: "Duduk ke meja",
+  finishDining: "Selesai makan",
+  noFreeTables: "Tidak ada meja kosong — tambah meja di Pengaturan, atau pakai Duduk.",
   waitMins: "tunggu",
   addWalkIn: "Tambah walk-in",
   viewEdit: "Lihat / edit",

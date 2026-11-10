@@ -14,6 +14,7 @@ const labels = {
   restore: "Restore to waiting",
   emptyQueue: "No parties waiting",
   emptyCalled: "No parties called",
+  emptyDining: "No parties dining",
   emptyDone: "No completed parties today",
   waiting: "Waiting",
   notified: "Notified",
@@ -22,6 +23,7 @@ const labels = {
   cancelled: "Cancelled",
   tabWaiting: "Waiting",
   tabCalled: "Called",
+  tabDining: "Dining",
   tabDone: "Done today",
   waitMins: "wait",
   addWalkIn: "Add walk-in",
@@ -37,9 +39,12 @@ const labels = {
   notifyFailed: "Queue updated; WhatsApp failed",
   actionFailed: "Action failed",
   assignTable: "Assign table",
+  seatToTable: "Seat to table",
   seatWithoutTable: "Seat without table",
+  finishDining: "Finish dining",
   tableSeats: "Seats",
   preferredFit: "Best fit",
+  noFreeTables: "No free tables — add tables in Settings, or use Seated.",
 };
 
 export default async function AdminOutletQueuePage({
@@ -87,6 +92,7 @@ export default async function AdminOutletQueuePage({
         outletSlug={outlet.slug}
         initialWaiting={board.waiting.map(serializeParty)}
         initialCalled={board.called.map(serializeParty)}
+        initialDining={board.dining.map(serializeParty)}
         initialDone={board.doneToday.map(serializeParty)}
         floorEnabled={planHasFloor(outlet.organization.plan)}
         labels={labels}

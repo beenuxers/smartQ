@@ -84,6 +84,7 @@ export default async function DashboardPage() {
         outletSlug={outlet.slug}
         initialWaiting={board.waiting.map(serializeParty)}
         initialCalled={board.called.map(serializeParty)}
+        initialDining={board.dining.map(serializeParty)}
         initialDone={board.doneToday.map(serializeParty)}
         floorEnabled={floorEnabled}
         labels={{
@@ -95,6 +96,7 @@ export default async function DashboardPage() {
           restore: t.restore,
           emptyQueue: t.emptyQueue,
           emptyCalled: t.emptyCalled,
+          emptyDining: t.emptyDining,
           emptyDone: t.emptyDone,
           waiting: t.waiting,
           notified: t.notified,
@@ -103,6 +105,7 @@ export default async function DashboardPage() {
           cancelled: t.cancelled,
           tabWaiting: t.tabWaiting,
           tabCalled: t.tabCalled,
+          tabDining: t.tabDining,
           tabDone: t.tabDone,
           waitMins: t.waitMins,
           addWalkIn: t.addWalkIn,
@@ -118,9 +121,12 @@ export default async function DashboardPage() {
           notifyFailed: t.notifyFailed,
           actionFailed: t.actionFailed,
           assignTable: t.assignTable,
+          seatToTable: t.seatToTable,
           seatWithoutTable: t.seatWithoutTable,
+          finishDining: t.finishDining,
           tableSeats: t.tableSeats,
           preferredFit: t.preferredFit,
+          noFreeTables: t.noFreeTables,
         }}
       />
     </div>

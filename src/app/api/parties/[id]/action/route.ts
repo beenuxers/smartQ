@@ -7,7 +7,7 @@ import { canSendWhatsApp, recordWhatsApp } from "@/lib/usage";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
 const schema = z.object({
-  action: z.enum(["notify", "seated", "no_show", "cancel", "restore"]),
+  action: z.enum(["notify", "seated", "no_show", "cancel", "restore", "finish"]),
   tableId: z.string().min(1).optional(),
 });
 
@@ -113,6 +113,39 @@ export async function POST(
         seatedAt: now,
         completedAt: now,
       },
+    });
+    return NextResponse.json(updated);
+  }
+
+  if (body.action === "finish") {
+    // End dining from waitlist (no Floor required). Linked table → dirty.
+    if (party.status !== "seated") {
+      return NextResponse.json(
+        { error: "Party is not seated" },
+        { status: 400 },
+      );
+    }
+    const now = new Date();
+    const updated = await prisma.$transaction(async (tx) => {
+      if (party.diningTable) {
+        await tx.diningTable.update({
+          where: { id: party.diningTable.id },
+          data: {
+            status: "dirty",
+            partyId: null,
+            clearedAt: now,
+            seatedAt: null,
+          },
+        });
+      }
+      return tx.party.update({
+        where: { id },
+        data: {
+          status: "seated",
+          completedAt: now,
+          seatedAt: party.seatedAt ?? now,
+        },
+      });
     });
     return NextResponse.json(updated);
   }

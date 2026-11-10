@@ -19,7 +19,7 @@ export type PartyRow = {
   waitMinutes: number;
 };
 
-type Tab = "waiting" | "called" | "done";
+type Tab = "waiting" | "called" | "dining" | "done";
 
 export type HostQueueLabels = {
   notify: string;
@@ -31,6 +31,7 @@ export type HostQueueLabels = {
   emptyQueue: string;
   emptyCalled: string;
   emptyDone: string;
+  emptyDining: string;
   waiting: string;
   notified: string;
   seated: string;
@@ -38,6 +39,7 @@ export type HostQueueLabels = {
   cancelled: string;
   tabWaiting: string;
   tabCalled: string;
+  tabDining: string;
   tabDone: string;
   waitMins: string;
   addWalkIn: string;
@@ -53,9 +55,12 @@ export type HostQueueLabels = {
   notifyFailed: string;
   actionFailed: string;
   assignTable: string;
+  seatToTable: string;
   seatWithoutTable: string;
+  finishDining: string;
   tableSeats: string;
   preferredFit: string;
+  noFreeTables: string;
 };
 
 type FreeTableOption = {
@@ -69,6 +74,7 @@ export function HostWaitlist({
   outletSlug,
   initialWaiting,
   initialCalled,
+  initialDining = [],
   initialDone,
   floorEnabled = false,
   labels,
@@ -77,6 +83,7 @@ export function HostWaitlist({
   outletSlug: string;
   initialWaiting: PartyRow[];
   initialCalled: PartyRow[];
+  initialDining?: PartyRow[];
   initialDone: PartyRow[];
   floorEnabled?: boolean;
   labels: HostQueueLabels;
@@ -85,6 +92,7 @@ export function HostWaitlist({
   const [tab, setTab] = useState<Tab>("waiting");
   const [waiting, setWaiting] = useState(initialWaiting);
   const [called, setCalled] = useState(initialCalled);
+  const [dining, setDining] = useState(initialDining);
   const [done, setDone] = useState(initialDone);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -94,9 +102,15 @@ export function HostWaitlist({
   const [freeTables, setFreeTables] = useState<FreeTableOption[]>([]);
 
   const applyBoard = useCallback(
-    (board: { waiting: PartyRow[]; called: PartyRow[]; doneToday: PartyRow[] }) => {
+    (board: {
+      waiting: PartyRow[];
+      called: PartyRow[];
+      dining?: PartyRow[];
+      doneToday: PartyRow[];
+    }) => {
       setWaiting(board.waiting);
       setCalled(board.called);
+      setDining(board.dining ?? []);
       setDone(board.doneToday);
     },
     [],
@@ -113,8 +127,9 @@ export function HostWaitlist({
   useEffect(() => {
     setWaiting(initialWaiting);
     setCalled(initialCalled);
+    setDining(initialDining);
     setDone(initialDone);
-  }, [initialWaiting, initialCalled, initialDone]);
+  }, [initialWaiting, initialCalled, initialDining, initialDone]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -124,15 +139,22 @@ export function HostWaitlist({
   }, [refreshBoard]);
 
   const selected = useMemo(() => {
-    const all = [...waiting, ...called, ...done];
+    const all = [...waiting, ...called, ...dining, ...done];
     return all.find((p) => p.id === selectedId) ?? null;
-  }, [waiting, called, done, selectedId]);
+  }, [waiting, called, dining, done, selectedId]);
 
-  const rows = tab === "waiting" ? waiting : tab === "called" ? called : done;
+  const rows =
+    tab === "waiting"
+      ? waiting
+      : tab === "called"
+        ? called
+        : tab === "dining"
+          ? dining
+          : done;
 
   async function act(
     id: string,
-    action: "notify" | "seated" | "no_show" | "cancel" | "restore",
+    action: "notify" | "seated" | "no_show" | "cancel" | "restore" | "finish",
     tableId?: string,
   ) {
     setMessage("");
@@ -155,14 +177,11 @@ export function HostWaitlist({
     await refreshBoard();
   }
 
+  /** Optional: seat onto a free table (Starter+ with tables configured). */
   async function openSeatPicker(party: PartyRow) {
-    if (!floorEnabled) {
-      await act(party.id, "seated");
-      return;
-    }
     const res = await fetch(`/api/tables?outletId=${outletId}`);
     if (!res.ok) {
-      await act(party.id, "seated");
+      setMessage(labels.actionFailed);
       return;
     }
     const json = await res.json();
@@ -170,7 +189,7 @@ export function HostWaitlist({
       .filter((t) => t.status === "free")
       .map((t) => ({ id: t.id, name: t.name, seats: t.seats }));
     if (free.length === 0) {
-      await act(party.id, "seated");
+      setMessage(labels.noFreeTables);
       return;
     }
     setFreeTables(free);
@@ -243,19 +262,24 @@ export function HostWaitlist({
       ? labels.emptyQueue
       : tab === "called"
         ? labels.emptyCalled
-        : labels.emptyDone;
+        : tab === "dining"
+          ? labels.emptyDining
+          : labels.emptyDone;
+
+  const tabs: Array<[Tab, string, number]> = [
+    ["waiting", labels.tabWaiting, waiting.length],
+    ["called", labels.tabCalled, called.length],
+  ];
+  if (floorEnabled || dining.length > 0) {
+    tabs.push(["dining", labels.tabDining, dining.length]);
+  }
+  tabs.push(["done", labels.tabDone, done.length]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["waiting", labels.tabWaiting, waiting.length],
-              ["called", labels.tabCalled, called.length],
-              ["done", labels.tabDone, done.length],
-            ] as const
-          ).map(([key, label, count]) => (
+          {tabs.map(([key, label, count]) => (
             <button
               key={key}
               type="button"
@@ -314,6 +338,23 @@ export function HostWaitlist({
                   >
                     {labels.restore}
                   </button>
+                ) : tab === "dining" ? (
+                  <>
+                    <button
+                      className="btn btn-primary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "finish")}
+                    >
+                      {labels.finishDining}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={pending}
+                      onClick={() => act(party.id, "restore")}
+                    >
+                      {labels.restore}
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button
@@ -326,10 +367,19 @@ export function HostWaitlist({
                     <button
                       className="btn btn-secondary"
                       disabled={pending}
-                      onClick={() => openSeatPicker(party)}
+                      onClick={() => act(party.id, "seated")}
                     >
                       {labels.markSeated}
                     </button>
+                    {floorEnabled ? (
+                      <button
+                        className="btn btn-secondary"
+                        disabled={pending}
+                        onClick={() => openSeatPicker(party)}
+                      >
+                        {labels.seatToTable}
+                      </button>
+                    ) : null}
                     <button
                       className="btn btn-secondary"
                       disabled={pending}

@@ -59,7 +59,7 @@ export async function getQueueBoard(
     queueDayCutoff || "04:00",
   );
 
-  const [waiting, called, doneToday] = await Promise.all([
+  const [waiting, called, dining, doneToday] = await Promise.all([
     prisma.party.findMany({
       where: { outletId, status: "waiting" },
       orderBy: { queueNumber: "asc" },
@@ -68,7 +68,16 @@ export async function getQueueBoard(
       where: { outletId, status: "notified" },
       orderBy: { queueNumber: "asc" },
     }),
-    // Done = finished parties only (dining with completedAt null stay on Floor).
+    // Still dining (usually seated to a table; completedAt not set yet).
+    prisma.party.findMany({
+      where: {
+        outletId,
+        status: "seated",
+        completedAt: null,
+      },
+      orderBy: { seatedAt: "asc" },
+    }),
+    // Done = finished parties only.
     prisma.party.findMany({
       where: {
         outletId,
@@ -90,5 +99,5 @@ export async function getQueueBoard(
     }),
   ]);
 
-  return { waiting, called, doneToday, dayStart, dayEnd };
+  return { waiting, called, dining, doneToday, dayStart, dayEnd };
 }
