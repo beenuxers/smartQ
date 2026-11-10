@@ -42,19 +42,22 @@ export function PositionClient({
 
   const finished =
     data.status === "seated" ||
+    data.status === "finished" ||
     data.status === "no_show" ||
     data.status === "cancelled";
 
   const statusLabel =
     data.status === "notified"
       ? labels.tableReady
-      : data.status === "seated"
+      : data.status === "finished"
         ? labels.seated
-        : data.status === "no_show"
-          ? labels.noShow
-          : data.status === "cancelled"
-            ? labels.cancelled
-            : labels.waiting;
+        : data.status === "seated"
+          ? labels.seated
+          : data.status === "no_show"
+            ? labels.noShow
+            : data.status === "cancelled"
+              ? labels.cancelled
+              : labels.waiting;
 
   const ready = data.status === "notified";
 

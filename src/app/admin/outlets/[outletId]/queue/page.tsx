@@ -19,6 +19,7 @@ const labels = {
   waiting: "Waiting",
   notified: "Notified",
   seated: "Seated",
+  finished: "Finished",
   noShow: "No-show",
   cancelled: "Cancelled",
   tabWaiting: "Waiting",

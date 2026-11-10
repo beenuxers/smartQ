@@ -27,12 +27,12 @@ function summarizeParties(
     seatedAt: Date | null;
     notifiedAt: Date | null;
   }>,
+  seatings: number,
   rangeStart: Date,
   rangeEnd: Date,
   label: string,
 ): OutletReportStats {
   const joins = parties.length;
-  const seatings = parties.filter((p) => p.status === "seated").length;
   const noShows = parties.filter((p) => p.status === "no_show").length;
   const cancels = parties.filter((p) => p.status === "cancelled").length;
   const notified = parties.filter((p) => p.notifiedAt != null).length;
@@ -88,14 +88,23 @@ export async function getOutletReportStats(
     label = d.label;
   }
 
-  const parties = await prisma.party.findMany({
-    where: {
-      outletId,
-      joinedAt: { gte: rangeStart, lt: rangeEnd },
-    },
-  });
+  const [parties, seatings] = await Promise.all([
+    prisma.party.findMany({
+      where: {
+        outletId,
+        joinedAt: { gte: rangeStart, lt: rangeEnd },
+      },
+    }),
+    // Seatings = parties actually seated in this window (dining or finished).
+    prisma.party.count({
+      where: {
+        outletId,
+        seatedAt: { gte: rangeStart, lt: rangeEnd },
+      },
+    }),
+  ]);
 
-  return summarizeParties(parties, rangeStart, rangeEnd, label);
+  return summarizeParties(parties, seatings, rangeStart, rangeEnd, label);
 }
 
 /** @deprecated prefer getOutletReportStats — kept for call sites expecting old shape */
@@ -142,17 +151,24 @@ export async function getQueueDayTrend(
 
   const rows = [];
   for (const w of windows) {
-    const parties = await prisma.party.findMany({
-      where: {
-        outletId,
-        joinedAt: { gte: w.dayStart, lt: w.dayEnd },
-      },
-      select: { status: true },
-    });
+    const [joins, seatings] = await Promise.all([
+      prisma.party.count({
+        where: {
+          outletId,
+          joinedAt: { gte: w.dayStart, lt: w.dayEnd },
+        },
+      }),
+      prisma.party.count({
+        where: {
+          outletId,
+          seatedAt: { gte: w.dayStart, lt: w.dayEnd },
+        },
+      }),
+    ]);
     rows.push({
       label: w.label,
-      joins: parties.length,
-      seatings: parties.filter((p) => p.status === "seated").length,
+      joins,
+      seatings,
     });
   }
   return rows;

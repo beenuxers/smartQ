@@ -18,6 +18,7 @@ export type Messages = {
   notified: string;
   tableReady: string;
   seated: string;
+  finished: string;
   noShow: string;
   hostDashboard: string;
   notify: string;
@@ -137,6 +138,7 @@ const en: Messages = {
   notified: "Notified",
   tableReady: "Your table is ready!",
   seated: "Seated",
+  finished: "Finished",
   noShow: "No-show",
   hostDashboard: "Host dashboard",
   notify: "Notify",
@@ -259,6 +261,7 @@ const ms: Messages = {
   notified: "Dimaklumkan",
   tableReady: "Meja anda sudah sedia!",
   seated: "Duduk",
+  finished: "Selesai",
   noShow: "Tidak datang",
   hostDashboard: "Papan host",
   notify: "Maklumkan",
@@ -371,6 +374,7 @@ const id: Messages = {
   notified: "Diberitahu",
   tableReady: "Meja Anda sudah siap!",
   seated: "Duduk",
+  finished: "Selesai",
   noShow: "Tidak datang",
   hostDashboard: "Dasbor host",
   notify: "Beritahu",

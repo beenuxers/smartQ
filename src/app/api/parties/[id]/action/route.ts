@@ -141,7 +141,7 @@ export async function POST(
       return tx.party.update({
         where: { id },
         data: {
-          status: "seated",
+          status: "finished",
           completedAt: now,
           seatedAt: party.seatedAt ?? now,
         },

@@ -115,7 +115,7 @@ model Party {
   partySize    Int
   phone        String
   notes        String?
-  status       String       @default("waiting") // waiting | notified | seated | no_show | cancelled
+  status       String       @default("waiting") // waiting | notified | seated | finished | no_show | cancelled
   positionLink String
   joinedAt     DateTime     @default(now())
   notifiedAt   DateTime?

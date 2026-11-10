@@ -65,7 +65,11 @@ export async function PATCH(
         if (table.partyId) {
           await tx.party.update({
             where: { id: table.partyId },
-            data: { completedAt: now },
+            data: {
+              status: "finished",
+              completedAt: now,
+              seatedAt: table.seatedAt ?? now,
+            },
           });
         }
         await tx.diningTable.update({

@@ -101,6 +101,7 @@ export default async function DashboardPage() {
           waiting: t.waiting,
           notified: t.notified,
           seated: t.seated,
+          finished: t.finished,
           noShow: t.noShow,
           cancelled: t.cancelled,
           tabWaiting: t.tabWaiting,

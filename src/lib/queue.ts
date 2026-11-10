@@ -77,19 +77,20 @@ export async function getQueueBoard(
       },
       orderBy: { seatedAt: "asc" },
     }),
-    // Done = finished parties only.
+    // Done = finished dining / no-show / cancelled (plus legacy seated+completedAt).
     prisma.party.findMany({
       where: {
         outletId,
         OR: [
           {
-            status: { in: ["no_show", "cancelled"] },
+            status: { in: ["finished", "no_show", "cancelled"] },
             OR: [
               { completedAt: { gte: dayStart, lt: dayEnd } },
               { joinedAt: { gte: dayStart, lt: dayEnd } },
             ],
           },
           {
+            // Legacy: finish used to leave status=seated with completedAt set.
             status: "seated",
             completedAt: { gte: dayStart, lt: dayEnd },
           },

@@ -35,6 +35,7 @@ export type HostQueueLabels = {
   waiting: string;
   notified: string;
   seated: string;
+  finished: string;
   noShow: string;
   cancelled: string;
   tabWaiting: string;
@@ -254,8 +255,11 @@ export function HostWaitlist({
     await refreshBoard();
   }
 
-  function statusLabel(status: string) {
+  function statusLabel(status: string, completedAt?: string | null) {
     if (status === "notified") return labels.notified;
+    if (status === "finished" || (status === "seated" && completedAt)) {
+      return labels.finished;
+    }
     if (status === "seated") return labels.seated;
     if (status === "no_show") return labels.noShow;
     if (status === "cancelled") return labels.cancelled;
@@ -318,7 +322,9 @@ export function HostWaitlist({
                   <span className="display text-2xl font-semibold tracking-tight">
                     #{party.queueNumber}
                   </span>
-                  <span className="badge">{statusLabel(party.status)}</span>
+                  <span className="badge">
+                    {statusLabel(party.status, party.completedAt)}
+                  </span>
                   <span className="text-xs text-muted">
                     {party.waitMinutes}m {labels.waitMins}
                   </span>
@@ -586,6 +592,7 @@ function PartyDrawer({
 
   const isDining = party.status === "seated" && !party.completedAt;
   const isDone =
+    party.status === "finished" ||
     party.status === "no_show" ||
     party.status === "cancelled" ||
     (party.status === "seated" && Boolean(party.completedAt));
@@ -634,7 +641,19 @@ function PartyDrawer({
         <div className="mb-5 space-y-2 border-b border-line pb-5">
           <p className="text-xs uppercase tracking-wide text-muted">Status</p>
           <p className="text-sm text-muted">
-            {party.waitMinutes}m {labels.waitMins} · {party.status}
+            {party.waitMinutes}m {labels.waitMins} ·{" "}
+            {party.status === "finished" ||
+            (party.status === "seated" && party.completedAt)
+              ? labels.finished
+              : party.status === "seated"
+                ? labels.seated
+                : party.status === "notified"
+                  ? labels.notified
+                  : party.status === "no_show"
+                    ? labels.noShow
+                    : party.status === "cancelled"
+                      ? labels.cancelled
+                      : labels.waiting}
           </p>
           <div className="flex flex-col gap-2">
             {isQueue ? (
