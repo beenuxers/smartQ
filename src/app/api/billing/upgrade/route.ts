@@ -29,6 +29,8 @@ export async function POST(req: Request) {
     },
   });
 
+  const provider = process.env.BILLING_PROVIDER || "local";
+
   await prisma.payment.create({
     data: {
       organizationId: org.id,
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
       amount: 0,
       currency: org.currency,
       status: "paid",
-      provider: "test",
+      provider,
       paidAt: new Date(),
     },
   });
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
     ok: true,
     plan: org.plan,
     billingCycle: org.billingCycle,
-    provider: "test",
+    provider,
     message: `Moved to ${PLANS.free.name}`,
   });
 }

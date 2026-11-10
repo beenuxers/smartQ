@@ -7,17 +7,43 @@ export function CheckoutForm({
   plan,
   billingCycle,
   amountLabel,
+  provider,
 }: {
   plan: "starter" | "growth";
   billingCycle: "monthly" | "annual";
   amountLabel: string;
+  provider: "local" | "stripe";
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  async function startStripeCheckout() {
+    setLoading(true);
+    setError("");
+    const res = await fetch("/api/billing/pay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan, billingCycle }),
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok || !data.url) {
+      setError(data.error || "Could not start Stripe Checkout");
+      return;
+    }
+
+    window.location.href = data.url as string;
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (provider === "stripe") {
+      await startStripeCheckout();
+      return;
+    }
+
     setLoading(true);
     setError("");
     const form = new FormData(e.currentTarget);
@@ -46,6 +72,25 @@ export function CheckoutForm({
       `/dashboard/billing/success?paymentId=${data.paymentId}&plan=${data.plan}`,
     );
     router.refresh();
+  }
+
+  if (provider === "stripe") {
+    return (
+      <div className="panel space-y-4">
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          disabled={loading}
+          onClick={startStripeCheckout}
+        >
+          {loading ? "Redirecting to Stripe…" : `Pay ${amountLabel} with Stripe`}
+        </button>
+        <p className="text-xs text-muted">
+          You&apos;ll complete payment on Stripe&apos;s secure checkout page.
+        </p>
+      </div>
+    );
   }
 
   return (

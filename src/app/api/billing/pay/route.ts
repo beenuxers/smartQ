@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
+import { amountForPlan, simulateCardCharge } from "@/lib/payments";
 import { PLANS, type PlanId } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
-import { amountForPlan, simulateCardCharge } from "@/lib/payments";
+import { appBaseUrl, getStripe, toStripeUnitAmount } from "@/lib/stripe";
 
-const schema = z.object({
+const localSchema = z.object({
   plan: z.enum(["starter", "growth"]),
   billingCycle: z.enum(["monthly", "annual"]),
   cardNumber: z.string().min(12),
   cardName: z.string().min(2),
   expiry: z.string().min(3),
   cvc: z.string().min(3).max(4),
+});
+
+const stripeSchema = z.object({
+  plan: z.enum(["starter", "growth"]),
+  billingCycle: z.enum(["monthly", "annual"]),
 });
 
 export async function POST(req: Request) {
@@ -22,14 +29,76 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = schema.parse(await req.json());
+    const json = await req.json();
     const org = await prisma.organization.findUniqueOrThrow({
       where: { id: session.user.organizationId },
     });
     const currency = (org.currency as CurrencyCode) || "USD";
+
+    if (isStripeBilling()) {
+      const body = stripeSchema.parse(json);
+      const plan = body.plan as PlanId;
+      const amount = amountForPlan(plan, body.billingCycle, currency);
+
+      const payment = await prisma.payment.create({
+        data: {
+          organizationId: org.id,
+          plan,
+          billingCycle: body.billingCycle,
+          amount,
+          currency,
+          status: "pending",
+          provider: "stripe",
+        },
+      });
+
+      const stripe = getStripe();
+      const base = appBaseUrl();
+      const checkout = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: session.user.email ?? undefined,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: currency.toLowerCase(),
+              unit_amount: toStripeUnitAmount(amount, currency),
+              product_data: {
+                name: `SmartQ ${PLANS[plan].name} (${body.billingCycle})`,
+                description: PLANS[plan].description,
+              },
+            },
+          },
+        ],
+        metadata: {
+          paymentId: payment.id,
+          organizationId: org.id,
+          plan,
+          billingCycle: body.billingCycle,
+        },
+        success_url: `${base}/dashboard/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${base}/dashboard/billing/checkout?plan=${plan}&cycle=${body.billingCycle}&cancelled=1`,
+      });
+
+      if (!checkout.url) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: "failed", failureReason: "Missing Stripe checkout URL" },
+        });
+        return NextResponse.json({ error: "Could not start Stripe Checkout" }, { status: 502 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        provider: "stripe",
+        paymentId: payment.id,
+        url: checkout.url,
+      });
+    }
+
+    const body = localSchema.parse(json);
     const plan = body.plan as PlanId;
     const amount = amountForPlan(plan, body.billingCycle, currency);
-
     const charge = simulateCardCharge(body.cardNumber);
     const payment = await prisma.payment.create({
       data: {
@@ -67,6 +136,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
+      provider: "local",
       paymentId: payment.id,
       plan,
       billingCycle: body.billingCycle,

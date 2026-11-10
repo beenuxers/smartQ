@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
+import { amountForPlan, TEST_CARDS } from "@/lib/payments";
 import { PLANS, formatMoney } from "@/lib/pricing";
 import type { CurrencyCode, PlanId } from "@/lib/product";
-import { amountForPlan, TEST_CARDS } from "@/lib/payments";
 import { CheckoutForm } from "./checkout-form";
 
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string; cycle?: string }>;
+  searchParams: Promise<{ plan?: string; cycle?: string; cancelled?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.organizationId) redirect("/login");
@@ -19,6 +20,7 @@ export default async function CheckoutPage({
   const plan: "starter" | "growth" =
     params.plan === "growth" ? "growth" : "starter";
   const cycle = params.cycle === "annual" ? "annual" : "monthly";
+  const stripe = isStripeBilling();
 
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: session.user.organizationId },
@@ -33,36 +35,52 @@ export default async function CheckoutPage({
       </Link>
       <div>
         <h1 className="text-4xl display">
-          Test checkout
+          {stripe ? "Checkout" : "Test checkout"}
         </h1>
         <p className="mt-2 text-muted">
-          Simulated payment for <strong>{PLANS[plan].name}</strong> ({cycle}) in {currency}. No real
-          charge — use the test cards below.
+          {stripe ? (
+            <>
+              Pay for <strong>{PLANS[plan].name}</strong> ({cycle}) in {currency} via Stripe.
+            </>
+          ) : (
+            <>
+              Simulated payment for <strong>{PLANS[plan].name}</strong> ({cycle}) in {currency}. No
+              real charge — use the test cards below.
+            </>
+          )}
         </p>
+        {params.cancelled === "1" ? (
+          <p className="mt-2 text-sm text-danger">Checkout was cancelled. You can try again.</p>
+        ) : null}
       </div>
 
       <div className="panel">
         <div className="flex items-end justify-between">
           <div>
             <div className="text-sm text-muted">Due now</div>
-            <div className="text-4xl display">
-              {formatMoney(amount, currency)}
-            </div>
+            <div className="text-4xl display">{formatMoney(amount, currency)}</div>
           </div>
           <div className="badge">{currency}</div>
         </div>
       </div>
 
-      <div className="panel text-sm text-muted space-y-1">
-        <p>
-          <strong>Success:</strong> {TEST_CARDS.success} (any future expiry / CVC)
-        </p>
-        <p>
-          <strong>Decline:</strong> {TEST_CARDS.decline}
-        </p>
-      </div>
+      {!stripe ? (
+        <div className="panel space-y-1 text-sm text-muted">
+          <p>
+            <strong>Success:</strong> {TEST_CARDS.success} (any future expiry / CVC)
+          </p>
+          <p>
+            <strong>Decline:</strong> {TEST_CARDS.decline}
+          </p>
+        </div>
+      ) : null}
 
-      <CheckoutForm plan={plan} billingCycle={cycle} amountLabel={formatMoney(amount, currency)} />
+      <CheckoutForm
+        plan={plan}
+        billingCycle={cycle}
+        amountLabel={formatMoney(amount, currency)}
+        provider={stripe ? "stripe" : "local"}
+      />
     </div>
   );
 }

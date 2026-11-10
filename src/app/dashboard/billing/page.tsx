@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isStripeBilling } from "@/lib/billing-provider";
 import { prisma } from "@/lib/db";
 import { PLANS, formatMoney, WHATSAPP_OVERAGE, getPlan } from "@/lib/pricing";
 import type { CurrencyCode } from "@/lib/product";
@@ -28,8 +29,10 @@ export default async function BillingPage() {
           Billing
         </h1>
         <p className="mt-2 text-muted">
-          Current plan <strong>{plan.name}</strong> · {org.billingCycle} · {currency}. Use the test
-          checkout to simulate payment (card <code>4242…</code>).
+          Current plan <strong>{plan.name}</strong> · {org.billingCycle} · {currency}.
+          {isStripeBilling()
+            ? " Paid upgrades go through Stripe Checkout."
+            : " Use the test checkout to simulate payment (card 4242…)."}
         </p>
       </div>
 
@@ -73,7 +76,10 @@ export default async function BillingPage() {
           Payment history
         </h2>
         {payments.length === 0 ? (
-          <p className="text-sm text-muted">No payments yet. Choose Starter or Growth to test checkout.</p>
+          <p className="text-sm text-muted">
+            No payments yet. Choose Starter or Growth to{" "}
+            {isStripeBilling() ? "checkout with Stripe" : "test checkout"}.
+          </p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="text-muted">
